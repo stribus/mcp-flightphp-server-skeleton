@@ -31,10 +31,10 @@
     "scripts": {
         "start": "php -S localhost:8000 -t public",
 		"post-create-project-cmd": [ 
-			"@php -r \"mkdir('app/prompts/');\"",
-			"@php -r \"mkdir('app/resources/');\"",
-			"@php -r \"mkdir('app/tools/');\"",
-			"@php -r \"mkdir('app/log/');\""
+			"@php -r \"@mkdir('app/prompts/');\"",
+			"@php -r \"@mkdir('app/resources/');\"",
+			"@php -r \"@mkdir('app/tools/');\"",
+			"@php -r \"@mkdir('app/log/');\""
 		]
     },
     "require-dev": {

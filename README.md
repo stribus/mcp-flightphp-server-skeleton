@@ -13,12 +13,17 @@ A PHP-based Model Context Protocol (MCP) server skeleton that supports both **HT
 
 ## Quick Start
 
-1. **Install Dependencies**
+1. **Install**
+Run this command from the directory in which you want to install your new Flight PHP application. (this will require PHP 7.4 or newer)
+
    ```bash
-   composer install
+    composer create-project stribus/mcp-flightphp-server-skeleton cool-project-name
    ```
 
+Run this command from the directory in which you want to install your new Flight PHP application. (this will require PHP 7.4 or newer)
+
 2. **Test HTTP Server**
+
    ```bash
    composer start
    # or
@@ -26,6 +31,7 @@ A PHP-based Model Context Protocol (MCP) server skeleton that supports both **HT
    ```
 
 3. **Test stdio Server**
+
    ```bash
    php mcp-server.php
    ```
@@ -37,11 +43,13 @@ A PHP-based Model Context Protocol (MCP) server skeleton that supports both **HT
 The HTTP server exposes MCP functionality via REST endpoints:
 
 **Start the server:**
+
 ```bash
 composer start
 ```
 
 **Available endpoints:**
+
 - `GET /` - Server information
 - `POST /tools/list` - List available tools
 - `POST /tools/call` - Execute a tool
@@ -51,6 +59,7 @@ composer start
 - `POST /resources/read` - Read a resource
 
 **Test the HTTP server:**
+
 ```bash
 # Windows PowerShell
 .\test-http-server.ps1
@@ -65,11 +74,13 @@ curl -X POST http://localhost:8000/tools/call -H "Content-Type: application/json
 The stdio server communicates via standard input/output using JSON-RPC 2.0 protocol:
 
 **Start the server:**
+
 ```bash
 php mcp-server.php
 ```
 
 **Test JSON-RPC commands:**
+
 ```bash
 # Windows PowerShell
 .\test-mcp-server.ps1
@@ -85,6 +96,7 @@ echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hello-worl
 For VS Code Copilot integration, configure the MCP server in your VS Code settings:
 
 **mcp-config.json example:**
+
 ```json
 {
   "mcpServers": {
@@ -102,11 +114,13 @@ For VS Code Copilot integration, configure the MCP server in your VS Code settin
 Tools are executable functions that can be called by MCP clients.
 
 ### Generate a new tool:
+
 ```bash
 vendor/bin/runway make:tool MyCustomTool
 ```
 
 ### Tool Structure:
+
 ```php
 <?php
 
@@ -153,6 +167,7 @@ class MyCustomTool extends AbstractMCPTool
 ```
 
 ### Tool Properties:
+
 - **`$name`**: Unique identifier for the tool
 - **`$description`**: What the tool does
 - **`$title`**: Human-readable title
@@ -165,11 +180,13 @@ class MyCustomTool extends AbstractMCPTool
 Prompts are templates that can generate dynamic text based on context.
 
 ### Generate a new prompt:
+
 ```bash
 vendor/bin/runway make:prompt MyCustomPrompt
 ```
 
 ### Prompt Structure:
+
 ```php
 <?php
 
@@ -208,6 +225,7 @@ class MyCustomPrompt extends AbstractMCPPrompt
 ```
 
 ### Prompt Properties:
+
 - **`$name`**: Unique identifier for the prompt
 - **`$description`**: What the prompt generates
 - **`$title`**: Human-readable title
@@ -232,6 +250,7 @@ class MyCustomPrompt extends AbstractMCPPrompt
 ## Available MCP Methods
 
 ### JSON-RPC 2.0 Methods:
+
 - **`initialize`** - Initialize the MCP connection
 - **`tools/list`** - List all available tools
 - **`tools/call`** - Execute a specific tool
@@ -243,6 +262,7 @@ class MyCustomPrompt extends AbstractMCPPrompt
 ## Logging and Debugging
 
 The server generates detailed logs in `mcp-server.log` for debugging purposes. Monitor this file to see:
+
 - Incoming requests
 - Server responses
 - Errors and exceptions
