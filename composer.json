@@ -1,5 +1,5 @@
 {
-    "name": "stribus/mcp-skeleton-server",
+    "name": "stribus/mcp-flightphp-server-skeleton",
     "description": "A Flight PHP framework skeleton app for MCP Server",
     "keywords": [
         "microframework",
