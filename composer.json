@@ -1,0 +1,48 @@
+{
+    "name": "stribus/mcp-skeleton-server",
+    "description": "A Flight PHP framework skeleton app for MCP Server",
+    "keywords": [
+        "microframework",
+        "flightphp",
+        "mcp",
+		"skeleton"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Flavio Augusto Toldo",
+            "email": "flavio.a.toldo@fatoldo.com.br",
+			"role": "lead"
+        }
+    ],
+    "require": {
+        "php": "^7.4 || ^8.0",
+        "ext-json": "*",
+        "flightphp/core": "^3.0",
+        "flightphp/runway": "^0.2 || ^1.1",
+        "tracy/tracy": "^2.9",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "config": {
+        "process-timeout": 0,
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "scripts": {
+        "start": "php -S localhost:8000 -t public",
+		"post-create-project-cmd": [ 
+			"@php -r \"mkdir('app/prompts/');\"",
+			"@php -r \"mkdir('app/resources/');\"",
+			"@php -r \"mkdir('app/tools/');\"",
+			"@php -r \"mkdir('app/log/');\""
+		]
+    },
+    "require-dev": {
+        "flightphp/tracy-extensions": "^0.1 || ^0.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    }
+}

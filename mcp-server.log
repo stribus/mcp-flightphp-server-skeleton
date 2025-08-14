@@ -1,0 +1,30 @@
+[2025-08-13 21:05:17] MCP Server started at 2025-08-13 21:05:17
+[2025-08-13 21:05:51] MCP Server stopped at 2025-08-13 21:05:51
+[2025-08-13 21:07:51] MCP Server started at 2025-08-13 21:07:51
+[2025-08-13 21:09:08] MCP Server stopped at 2025-08-13 21:09:08
+[2025-08-13 21:10:34] MCP Server started at 2025-08-13 21:10:34
+[2025-08-13 21:10:50] MCP Server stopped at 2025-08-13 21:10:50
+[2025-08-13 21:10:51] MCP Server started at 2025-08-13 21:10:51
+[2025-08-13 21:10:51] Received: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
+[2025-08-13 21:10:51] Sending: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"prompts":[],"tools":[]},"instructions":"Use the MCP server [description]. Available methods:  prompts/list, prompts/get , tools/list, tools/call ."}}
+[2025-08-13 21:10:51] MCP Server stopped at 2025-08-13 21:10:51
+[2025-08-13 21:15:00] MCP Server started at 2025-08-13 21:15:00
+[2025-08-13 21:15:00] Received: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
+[2025-08-13 21:15:00] Sending: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"prompts":[],"tools":[]},"instructions":"Use the MCP server [description]. Available methods:  prompts/list, prompts/get , tools/list, tools/call ."}}
+[2025-08-13 21:15:00] MCP Server stopped at 2025-08-13 21:15:00
+[2025-08-13 21:15:01] MCP Server started at 2025-08-13 21:15:01
+[2025-08-13 21:15:01] Received: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+[2025-08-13 21:15:01] Sending: {"jsonrpc":"2.0","id":2,"result":{"hello-world-tool":{"name":"hello-world-tool","description":"Tool example to return a hello world message.","title":"Hello World Tool","inputSchema":{"type":"object","properties":{"firstName":{"type":"string","description":"First name of the user"},"lastName":{"type":"string","description":"Last name of the user"}},"required":["firstName"]},"outputSchema":{"type":"object","properties":{"message":{"type":"string","description":"A hello world message including the provided first and last names."}}}}}}
+[2025-08-13 21:15:01] MCP Server stopped at 2025-08-13 21:15:01
+[2025-08-13 21:15:01] MCP Server started at 2025-08-13 21:15:01
+[2025-08-13 21:15:01] Received: {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hello_world","arguments":{"name":"VS Code Copilot"}}}
+[2025-08-13 21:15:01] Sending: {"jsonrpc":"2.0","id":3,"error":{"code":-32603,"message":"Internal error","data":"Tool 'hello_world' not found"}}
+[2025-08-13 21:15:01] MCP Server stopped at 2025-08-13 21:15:01
+[2025-08-13 21:15:02] MCP Server started at 2025-08-13 21:15:02
+[2025-08-13 21:15:02] Received: {"jsonrpc":"2.0","id":4,"method":"prompts/list","params":{}}
+[2025-08-13 21:15:02] Sending: {"jsonrpc":"2.0","id":4,"result":{"generate_sql":{"name":"generate_sql","description":"Generate SQL query based on table columns","title":"Generate SQL Query","promptText":"Write a SQL query using the table '' with the columns: .","arguments":[]}}}
+[2025-08-13 21:15:02] MCP Server stopped at 2025-08-13 21:15:02
+[2025-08-13 21:15:19] MCP Server started at 2025-08-13 21:15:19
+[2025-08-13 21:15:19] Received: {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hello-world-tool","arguments":{"firstName":"VS Code","lastName":"Copilot"}}}
+[2025-08-13 21:15:19] Sending: {"jsonrpc":"2.0","id":3,"result":{"message":"Hello VS Code Copilot"}}
+[2025-08-13 21:15:19] MCP Server stopped at 2025-08-13 21:15:19
