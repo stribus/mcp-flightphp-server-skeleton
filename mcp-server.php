@@ -152,10 +152,17 @@ class MCPStdioServer
 
     /**
      * Custom error handler
+     *
+     * $file and $line are optional because PHP may invoke the handler with
+     * only the first two arguments. Returning true stops PHP's internal
+     * handler from printing to STDOUT, which would corrupt the JSON-RPC
+     * stream this server writes there.
      */
-    public function errorHandler(int $severity, string $message, string $file, int $line): void
+    public function errorHandler(int $severity, string $message, string $file = '', int $line = 0): bool
     {
         $this->log("PHP Error [$severity]: $message in $file:$line");
+
+        return true;
     }
 
     /**
