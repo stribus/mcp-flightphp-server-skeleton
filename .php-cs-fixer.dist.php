@@ -25,5 +25,7 @@ return (new PhpCsFixer\Config())
         'yoda_style' => true,
     ])
     ->setIndent('    ')
+    // Matches `* text=auto eol=lf` in .gitattributes, so the fixer does not
+    // fight core.autocrlf on Windows checkouts.
     ->setLineEnding("\n")
     ->setFinder($finder);
