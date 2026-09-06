@@ -2,7 +2,7 @@
 
 namespace app\core;
 
-use app\Helpers\ClassAutoLoader;
+use app\helpers\ClassAutoLoader;
 use app\helpers\MCPPromptInterface;
 use app\helpers\MCPResourceInterface;
 use app\helpers\MCPToolInterface;
@@ -68,9 +68,6 @@ class MCPService
 
     public function listResources(string $uri): array
     {
-        if (!isset($this->resources)) {
-            return [];
-        }
         if (empty($uri)) {
             return $this->resources->list();
         }
@@ -96,18 +93,18 @@ class MCPService
     // check if there are any tools registered
     public function hasTools(): bool
     {
-        return isset($this->tools) && !empty($this->tools->list());
+        return !empty($this->tools->list());
     }
 
     // check if there are any prompts registered
     public function hasPrompts(): bool
     {
-        return isset($this->prompts) && !empty($this->prompts->list());
+        return !empty($this->prompts->list());
     }
 
     // check if there are any resources registered
     public function hasResources(): bool
     {
-        return isset($this->resources) && !empty($this->resources->list());
+        return !empty($this->resources->list());
     }
 }
