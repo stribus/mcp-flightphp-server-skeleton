@@ -66,10 +66,14 @@ class MakeToolsCommand extends AbstractBaseCommand
 
         $class->addComment('Tool for ' . $tool);
 
+        // Kebab-case, matching the convention HelloWorldTool already uses.
+        // strtolower() alone produced names like "myawesometool".
+        $toolName = strtolower((string) preg_replace('/(?<!^)[A-Z]/', '-$0', $tool));
+
         $class->addProperty('name')
             ->setVisibility('protected')
             ->setType('string')
-            ->setValue(strtolower($tool))
+            ->setValue($toolName)
             ->addComment('@var string Name Unique identifier for the tool');
 
         $class->addProperty('description')
@@ -94,11 +98,16 @@ class MakeToolsCommand extends AbstractBaseCommand
             ->setVisibility('protected')
             ->setType('null|array|string')
             ->setValue([
-                'type' => 'array',
-                'items' => [
-                    'type' => 'string',
-                    'description' => 'Output of the tool',
+                // MCP requires outputSchema to describe an object; the previous
+                // default used 'array', which no client would accept.
+                'type' => 'object',
+                'properties' => [
+                    'result' => [
+                        'type' => 'string',
+                        'description' => 'Output of the tool',
+                    ],
                 ],
+                'required' => ['result'],
             ])
             ->addComment('@var null|array|string Output schema Schema of the output returned by the tool. Can be a JSON schema or a string description.');
 
@@ -110,7 +119,13 @@ class MakeToolsCommand extends AbstractBaseCommand
         $executeMethod = $class->addMethod('execute')
             ->addComment('Executes the tool with the provided arguments')
             ->setVisibility('public')
-            ->setBody("// Implement the tool execution logic here \nreturn [];")
+            ->setBody(
+                "// Implement the tool execution logic here.\n"
+                . "// Returning a plain array is enough: the framework wraps it into the\n"
+                . "// MCP content envelope and, because this tool declares an outputSchema,\n"
+                . "// also into structuredContent.\n"
+                . "return ['result' => ''];"
+            )
             ->setReturnType('array');
 
         $executeMethod->addParameter('arguments')

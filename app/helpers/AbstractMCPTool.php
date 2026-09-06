@@ -43,25 +43,69 @@ abstract class AbstractMCPTool implements MCPToolInterface
 
     public function getInputSchema(): array
     {
-        $inputSchema = [
-            'type' => 'object',
-            'properties' => [],
-        ];
+        $properties = [];
         $required = [];
-        foreach ($this->arguments as $parameter) {
-            $inputSchema['properties'][$parameter['name']] = [
-                'type' => $parameter['type'] ?? 'string',
-                'description' => $parameter['description'] ?? '',
+
+        foreach (MCPResultBuilder::normalizeArguments($this->arguments) as $index => $parameter) {
+            $declared = $this->arguments[$index] ?? [];
+
+            $properties[$parameter['name']] = [
+                'type' => $declared['type'] ?? 'string',
+                'description' => $parameter['description'],
             ];
-            if (!empty($parameter['required']) && true === $parameter['required']) {
+
+            if (true === $parameter['required']) {
                 $required[] = $parameter['name'];
             }
         }
-        if (!empty($required)) {
+
+        $inputSchema = [
+            'type' => 'object',
+            // An empty PHP array encodes as [], but JSON Schema requires
+            // "properties" to be an object even when the tool takes no input.
+            'properties' => [] === $properties ? new \stdClass() : $properties,
+        ];
+
+        if ([] !== $required) {
             $inputSchema['required'] = $required;
         }
 
         return $inputSchema;
+    }
+
+    /**
+     * Rejects a call that omits a required argument.
+     *
+     * Doing this in the base class means no tool has to hand-roll the check,
+     * and the failure is reported as -32602 (invalid params) rather than as a
+     * generic internal error.
+     *
+     * @param array<string,mixed> $arguments
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function validateArguments(array $arguments): void
+    {
+        $missing = [];
+
+        foreach (MCPResultBuilder::normalizeArguments($this->arguments) as $parameter) {
+            if (false === $parameter['required']) {
+                continue;
+            }
+
+            $value = $arguments[$parameter['name']] ?? null;
+
+            if (null === $value || '' === $value) {
+                $missing[] = $parameter['name'];
+            }
+        }
+
+        if ([] !== $missing) {
+            throw new \InvalidArgumentException(
+                'Missing required argument(s): ' . implode(', ', $missing),
+                -32602
+            );
+        }
     }
 
     public function getOutputSchema(): ?array
@@ -93,7 +137,9 @@ abstract class AbstractMCPTool implements MCPToolInterface
             return $outputSchema;
         }
         if (is_string($this->outputSchema)) {
-            return ['type' => 'text', 'description' => $this->outputSchema];
+            // "text" is not a JSON Schema type; the valid set is object,
+            // array, string, number, integer, boolean and null.
+            return ['type' => 'string', 'description' => $this->outputSchema];
         }
 
         return null;
