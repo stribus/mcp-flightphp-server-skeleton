@@ -20,9 +20,17 @@ Run this command from the directory in which you want to install your new Flight
     composer create-project stribus/mcp-flightphp-server-skeleton cool-project-name
    ```
 
-Run this command from the directory in which you want to install your new Flight PHP application. (this will require PHP 7.4 or newer)
+2. **Configure the environment**
 
-2. **Test HTTP Server**
+   ```bash
+   cp .env.example .env      # Linux / macOS
+   copy .env.example .env    # Windows
+   ```
+
+   `.env` is git-ignored — keep your credentials out of version control. The skeleton also runs without a `.env`;
+   see the comments in `.env.example` for the database variables.
+
+3. **Test HTTP Server**
 
    ```bash
    composer start
@@ -30,7 +38,7 @@ Run this command from the directory in which you want to install your new Flight
    php -S localhost:8000 -t public
    ```
 
-3. **Test stdio Server**
+4. **Test stdio Server**
 
    ```bash
    php mcp-server.php
