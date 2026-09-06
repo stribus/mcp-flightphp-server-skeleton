@@ -4,5 +4,6 @@ vendor/
 composer.lock
 .vagrant/
 .runway-creds.json
+.php-cs-fixer.cache
 .env
 mcp-server.log

@@ -30,7 +30,10 @@
     },
     "scripts": {
         "start": "php -S localhost:8000 -t public",
-		"post-create-project-cmd": [ 
+        "analyse": "phpstan analyse",
+        "cs-check": "php-cs-fixer fix --dry-run --diff",
+        "cs-fix": "php-cs-fixer fix",
+		"post-create-project-cmd": [
 			"@php -r \"@mkdir('app/prompts/');\"",
 			"@php -r \"@mkdir('app/resources/');\"",
 			"@php -r \"@mkdir('app/tools/');\"",
@@ -38,7 +41,9 @@
 		]
     },
     "require-dev": {
-        "flightphp/tracy-extensions": "^0.1 || ^0.2"
+        "flightphp/tracy-extensions": "^0.1 || ^0.2",
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/phpstan": "^2.2"
     },
     "autoload": {
         "psr-4": {
