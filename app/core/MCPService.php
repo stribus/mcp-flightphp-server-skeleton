@@ -2,9 +2,11 @@
 
 namespace app\core;
 
+use app\helpers\AbstractMCPTool;
 use app\helpers\ClassAutoLoader;
 use app\helpers\MCPPromptInterface;
 use app\helpers\MCPResourceInterface;
+use app\helpers\MCPResultBuilder;
 use app\helpers\MCPToolInterface;
 
 class MCPService
@@ -61,9 +63,39 @@ class MCPService
         return $this->tools->list();
     }
 
-    public function callTool(array $params): mixed
+    /**
+     * Runs a tool and returns a spec-shaped CallToolResult.
+     *
+     * @param array<string,mixed> $params
+     *
+     * @return array<string,mixed>
+     */
+    public function callTool(array $params): array
     {
-        return $this->tools->get($params['name'])->execute($params['arguments'] ?? []);
+        $name = $params['name'] ?? null;
+
+        if (false === is_string($name) || '' === $name) {
+            throw new \InvalidArgumentException('Missing required parameter: name', -32602);
+        }
+
+        // A missing tool or a missing argument is a protocol error, so it is
+        // raised and surfaces as a JSON-RPC error.
+        $tool = $this->tools->get($name);
+        $arguments = $params['arguments'] ?? [];
+
+        if ($tool instanceof AbstractMCPTool) {
+            $tool->validateArguments($arguments);
+        }
+
+        try {
+            $result = $tool->execute($arguments);
+        } catch (\Throwable $e) {
+            // A failure inside the tool is an execution error, which the spec
+            // reports in the result with isError - never as a JSON-RPC error.
+            return MCPResultBuilder::errorResult($e->getMessage());
+        }
+
+        return MCPResultBuilder::toolResult($result, $tool->getOutputSchema());
     }
 
     public function listResources(string $uri): array

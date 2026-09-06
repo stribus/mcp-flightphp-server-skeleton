@@ -17,25 +17,27 @@ class MCPToolRegistry
     public function get(string $name): MCPToolInterface
     {
         if (!isset($this->tools[$name])) {
-            throw new \Exception("Tool '{$name}' not found", -32601);
+            // The spec maps an unknown tool to invalid params, not to an
+            // unknown method - the method (tools/call) does exist.
+            throw new \Exception("Unknown tool: {$name}", -32602);
         }
 
         return $this->tools[$name];
     }
 
+    /**
+     * @return array<int,array<string,mixed>>
+     */
     public function list(): array
     {
-        return array_map(function ($tool) {
-            // $required = [];
-            // $arguments = method_exists($tool, 'getArguments') ? $tool->getArguments() : [];
-            $inputSchema = $tool->getInputSchema();
+        $tools = array_map(function ($tool) {
             $outputSchema = $tool->getOutputSchema();
 
             $return = [
                 'name' => $tool->getName(),
                 'description' => $tool->getDescription(),
                 'title' => $tool->getTitle() ?? $tool->getName(),
-                'inputSchema' => $inputSchema,
+                'inputSchema' => $tool->getInputSchema(),
             ];
 
             if (null !== $outputSchema) {
@@ -44,5 +46,9 @@ class MCPToolRegistry
 
             return $return;
         }, $this->tools);
+
+        // The registry is keyed by tool name, and array_map preserves string
+        // keys, which would encode as a JSON object. The spec wants an array.
+        return array_values($tools);
     }
 }

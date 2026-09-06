@@ -66,7 +66,9 @@ class MCPServerController
                     break;
 
                 case 'tools/list':
-                    $result = $this->service->listTools();
+                    // Every list result is wrapped in a named array. Omitting
+                    // nextCursor means there are no further pages.
+                    $result = ['tools' => $this->service->listTools()];
 
                     break;
 
@@ -112,7 +114,9 @@ class MCPServerController
                 return null;
             }
 
-            return $this->error($id, $this->errorCode($e), 'Internal error', $e->getMessage());
+            $code = $this->errorCode($e);
+
+            return $this->error($id, $code, $this->errorMessage($code), $e->getMessage());
         }
 
         if (true === $isNotification) {
@@ -182,6 +186,26 @@ class MCPServerController
         $code = $e->getCode();
 
         return is_int($code) && 0 > $code ? $code : -32603;
+    }
+
+    /**
+     * The standard message that goes with a JSON-RPC error code.
+     *
+     * Details belong in "data"; "message" stays the canonical short label so
+     * clients can match on it.
+     */
+    private function errorMessage(int $code): string
+    {
+        $messages = [
+            -32700 => 'Parse error',
+            -32600 => 'Invalid Request',
+            -32601 => 'Method not found',
+            -32602 => 'Invalid params',
+            -32603 => 'Internal error',
+            -32002 => 'Resource not found',
+        ];
+
+        return $messages[$code] ?? 'Internal error';
     }
 
     /**
