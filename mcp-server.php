@@ -87,17 +87,24 @@ class MCPStdioServer
                 
                 // Process request
                 $response = $this->controller->handleRequest($request);
+
+                // A null response means the message was a notification.
+                // JSON-RPC forbids answering those, and the spec forbids
+                // writing anything to stdout that is not a valid MCP message.
+                if (null !== $response) {
+                    $this->sendResponse($response);
+                }
                 
-                // Send response
-                $this->sendResponse($response);
-                
-            } catch (Exception $e) {
+            } catch (\Throwable $e) {
                 $this->log("Exception: " . $e->getMessage());
-                $this->sendError(
-                    $request['id'] ?? null, 
-                    -32603, 
-                    'Internal error: ' . $e->getMessage()
-                );
+
+                if (is_array($request) && array_key_exists('id', $request)) {
+                    $this->sendError(
+                        $request['id'],
+                        -32603,
+                        'Internal error: ' . $e->getMessage()
+                    );
+                }
             }
         }
         

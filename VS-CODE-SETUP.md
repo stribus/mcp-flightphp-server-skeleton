@@ -1,85 +1,84 @@
-# Configuração do Servidor MCP para VS Code Copilot
+# Configuração do Servidor MCP para VS Code
 
-## Arquivos Criados
+## Arquivos relevantes
 
-O projeto agora inclui os seguintes arquivos para suporte ao protocolo MCP:
+- **`mcp-server.php`** — servidor MCP via stdio (JSON-RPC 2.0)
+- **`.vscode/mcp.json`** — configuração pronta para o VS Code, versionada no repositório
+- **`mcp-config.example.json`** — modelo para clientes que não expandem variáveis
+- **`scripts/generate-mcp-config.php`** — gera o `mcp-config.json` com o caminho real
+- **`start-mcp-server.ps1`** / **`start-mcp-server.bat`** — atalhos para iniciar o servidor
+- **`test-mcp-server.ps1`** — teste do transporte stdio
+- **`test-http-server.ps1`** — teste do transporte HTTP
+- **`.env`** — configuração do ambiente (copie de `.env.example`)
 
-- **`mcp-server.php`** - Servidor principal que funciona via stdio
-- **`mcp-config.json`** - Exemplo de configuração para VS Code
-- **`start-mcp-server.ps1`** - Script para iniciar o servidor no PowerShell
-- **`start-mcp-server.bat`** - Script para iniciar o servidor no Command Prompt
-- **`test-mcp-server.ps1`** - Script para testar o servidor
-- **`MCP-README.md`** - Documentação detalhada
-- **`.env`** - Arquivo de configuração do ambiente
+## Como usar com o VS Code
 
-## Como Usar com VS Code Copilot
+O VS Code lê a configuração de servidores MCP de `.vscode/mcp.json`, e a chave de topo é
+`servers` — não `mcpServers`, que é o formato do Claude Desktop.
 
-### 1. Configuração no VS Code
-
-Para usar este servidor MCP com o VS Code Copilot, você precisará:
-
-1. **Instalar uma extensão compatível** com MCP no VS Code
-2. **Configurar o servidor** apontando para o arquivo `mcp-server.php`
-
-### 2. Exemplo de Configuração
-
-Use o arquivo `mcp-config.json` como referência:
+Este repositório já traz o arquivo pronto. **Não é preciso editar nada**: o VS Code expande
+`${workspaceFolder}` para o diretório onde você clonou o projeto, então funciona em qualquer
+máquina.
 
 ```json
 {
-  "mcpServers": {
-    "flightphp-skeleton": {
+  "servers": {
+    "flightphp-mcp-skeleton": {
+      "type": "stdio",
       "command": "php",
-      "args": ["mcp-server.php"],
-      "cwd": "f:\\projetos\\mcp-skeleton-server",
-      "env": {
-        "PATH": "${env:PATH}"
-      }
+      "args": ["${workspaceFolder}/mcp-server.php"]
     }
   }
 }
 ```
 
-### 3. Ferramentas Disponíveis
+## Outros clientes (Claude Desktop e similares)
 
-O servidor inclui:
-- **hello-world-tool**: Ferramenta de exemplo que retorna uma saudação
-- **generate_sql**: Prompt para gerar consultas SQL
+Clientes que não expandem variáveis precisam do caminho absoluto. O
+`composer create-project` já gera o `mcp-config.json` correto para a sua instalação. Para
+regerá-lo a qualquer momento:
 
-### 4. Testar o Servidor
-
-Execute o script de teste:
-```powershell
-.\test-mcp-server.ps1
+```bash
+php scripts/generate-mcp-config.php
 ```
 
-Ou teste manualmente:
+O `mcp-config.json` está no `.gitignore`, porque seu conteúdo é específico de uma máquina.
+O modelo versionado é o `mcp-config.example.json`.
+
+## Ferramentas incluídas
+
+- **hello-world-tool** — ferramenta de exemplo que devolve uma saudação
+- **generate_sql** — prompt de exemplo para gerar consultas SQL
+
+Ambas são apenas referências: o produto do esqueleto são os geradores.
+
+## Testar o servidor
+
 ```powershell
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | php mcp-server.php
+.\test-mcp-server.ps1     # transporte stdio
+.\test-http-server.ps1    # transporte HTTP
 ```
 
-### 5. Logs e Debugging
+Ou manualmente:
 
-- O servidor gera logs em `mcp-server.log`
-- Use os logs para debugging de problemas
-- O servidor inclui tratamento de erros JSON-RPC
+```powershell
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' | php mcp-server.php
+```
 
-### 6. Adicionar Novas Ferramentas
+A resposta deve trazer `protocolVersion`, `capabilities` e `serverInfo`.
 
-Use o comando Runway para criar novas ferramentas:
+## Logs e depuração
+
+O servidor stdio grava cada requisição e cada resposta em `mcp-server.log`. O arquivo não é
+versionado. Note que, em modo stdio, **nada além de mensagens MCP válidas pode ir para o
+stdout** — é por isso que a barra de depuração do Tracy fica desativada fora do SAPI web.
+
+## Adicionar novas ferramentas
+
 ```bash
 vendor/bin/runway make:tool MinhaNovaFerramenta
+vendor/bin/runway make:prompt MeuNovoPrompt
 ```
 
-As ferramentas criadas serão automaticamente descobertas pelo servidor MCP.
-
-## Status
-
-✅ Servidor MCP funcionando via stdio  
-✅ Protocolo JSON-RPC 2.0 implementado  
-✅ Ferramentas descobertas automaticamente  
-✅ Prompts suportados  
-✅ Logs e debugging funcionando  
-✅ Scripts de teste incluídos  
-
-O servidor está pronto para ser usado com o VS Code Copilot!
+Os comandos precisam ser executados a partir da raiz do projeto. As classes criadas são
+descobertas automaticamente — não existe nenhum registro manual a editar.
