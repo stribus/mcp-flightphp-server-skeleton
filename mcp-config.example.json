@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "flightphp-mcp-skeleton": {
+      "command": "php",
+      "args": ["/absolute/path/to/this/project/mcp-server.php"],
+      "env": {}
+    }
+  }
+}

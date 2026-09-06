@@ -58,24 +58,39 @@ composer start
 
 **Available endpoints:**
 
-- `GET /` - Server information
-- `POST /tools/list` - List available tools
-- `POST /tools/call` - Execute a tool
-- `POST /prompts/list` - List available prompts
-- `POST /prompts/get` - Get a prompt
-- `POST /resources/list` - List available resources
-- `POST /resources/read` - Read a resource
+MCP is a JSON-RPC protocol, not REST: every method travels in the body of a POST to a
+single endpoint. There is no `/tools/list` URL.
+
+- `POST /mcp` - the MCP endpoint. Every JSON-RPC method goes here.
+- `GET /mcp` - Server-Sent Events stream. Disabled by default; see below.
+- `DELETE /mcp` - terminate a session.
+- `GET /health` - health check.
+- `GET /` - this documentation, as JSON.
+
+**Sessions:** a successful `initialize` returns an `Mcp-Session-Id` header. Send it back on
+every subsequent request. After initialization, clients must also send
+`MCP-Protocol-Version: 2025-06-18`.
+
+**Origin validation:** the endpoint rejects browser requests from unknown origins with 403,
+as the spec requires to prevent DNS rebinding attacks. Configure with `MCP_ALLOWED_ORIGINS`.
 
 **Test the HTTP server:**
 
 ```bash
-# Windows PowerShell
+# Windows PowerShell - full transport test suite
 .\test-http-server.ps1
 
-# Or manually test endpoints
-curl -X POST http://localhost:8000/tools/list
-curl -X POST http://localhost:8000/tools/call -H "Content-Type: application/json" -d '{"name":"hello-world-tool","arguments":{"firstName":"John","lastName":"Doe"}}'
+# Or manually
+curl -i -X POST http://localhost:8000/mcp -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}'
 ```
+
+**Server-Sent Events are off by default.** `GET /mcp` answers `405`, which the specification
+explicitly permits. The reason is measured, not theoretical: PHP's built-in server
+(`composer start`) handles one request at a time, and on Windows it cannot fork at all -
+setting `PHP_CLI_SERVER_WORKERS` makes PHP print `forking is not supported on this platform`.
+An open stream would therefore make the whole server unresponsive. Set `MCP_HTTP_SSE=true`
+only when running behind Apache or nginx with php-fpm.
 
 ### 2. stdio Mode (JSON-RPC 2.0)
 
@@ -101,21 +116,30 @@ echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hello-worl
 
 ### 3. VS Code Integration
 
-For VS Code Copilot integration, configure the MCP server in your VS Code settings:
-
-**mcp-config.json example:**
+This repository ships a ready-to-use `.vscode/mcp.json`. It needs no editing, because
+VS Code expands `${workspaceFolder}` to wherever you cloned the project:
 
 ```json
 {
-  "mcpServers": {
-    "php-mcp-server": {
+  "servers": {
+    "flightphp-mcp-skeleton": {
+      "type": "stdio",
       "command": "php",
-      "args": ["path/to/mcp-server.php"],
-      "env": {}
+      "args": ["${workspaceFolder}/mcp-server.php"]
     }
   }
 }
 ```
+
+For clients that cannot expand variables, such as Claude Desktop, `composer create-project`
+generates `mcp-config.json` with this installation's absolute path already filled in. A
+template lives in `mcp-config.example.json`; regenerate at any time with:
+
+```bash
+php scripts/generate-mcp-config.php
+```
+
+`mcp-config.json` is git-ignored, since its contents are specific to one machine.
 
 ## Creating Tools
 

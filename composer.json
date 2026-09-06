@@ -37,7 +37,8 @@
 			"@php -r \"@mkdir('app/prompts/');\"",
 			"@php -r \"@mkdir('app/resources/');\"",
 			"@php -r \"@mkdir('app/tools/');\"",
-			"@php -r \"@mkdir('app/log/');\""
+			"@php -r \"@mkdir('app/log/');\"",
+			"@php scripts/generate-mcp-config.php"
 		]
     },
     "require-dev": {
