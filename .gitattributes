@@ -1,0 +1,28 @@
+# Line ending normalization.
+#
+# Git stores LF and checks LF out on every platform, so the working tree
+# matches what PHP-CS-Fixer writes (see setLineEnding("\n") in
+# .php-cs-fixer.dist.php).
+#
+# Without this, a Windows checkout with core.autocrlf=true produces CRLF
+# files and `composer cs-check` reports every file as needing a fix over
+# line endings alone - noise that git would normalize away on commit
+# anyway, and which makes the check useless as a signal.
+#
+# To refresh an existing checkout once, after pulling this file:
+#
+#     git rm --cached -r .
+#     git reset --hard
+#
+* text=auto eol=lf
+
+# Windows batch files must keep CRLF - cmd.exe can mis-parse LF-only .bat
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Never apply text conversion to binaries
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.pdf binary
