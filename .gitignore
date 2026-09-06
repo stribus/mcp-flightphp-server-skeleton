@@ -4,3 +4,5 @@ vendor/
 composer.lock
 .vagrant/
 .runway-creds.json
+.env
+mcp-server.log
