@@ -1,0 +1,10 @@
+parameters:
+    level: 5
+    paths:
+        - app
+        - commands
+        - mcp-server.php
+        - public
+    excludePaths:
+        - vendor
+    treatPhpDocTypesAsCertain: false
