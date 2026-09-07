@@ -17,20 +17,29 @@ class MCPPromptRegistry
     public function get(string $name): MCPPromptInterface
     {
         if (!isset($this->prompts[$name])) {
-            throw new \Exception("Prompt '{$name}' not found", -32601);
+            // The spec maps an unknown prompt name to invalid params.
+            throw new \Exception("Unknown prompt: {$name}", -32602);
         }
 
         return $this->prompts[$name];
     }
 
+    /**
+     * @return array<int,array<string,mixed>>
+     */
     public function list(): array
     {
-        return array_map(fn ($prompt) => [
+        $prompts = array_map(fn ($prompt) => [
             'name' => $prompt->getName(),
             'description' => $prompt->getDescription(),
             'title' => $prompt->getTitle() ?? $prompt->getName(),
-            'promptText' => $prompt->getPromptText([]),
-            'arguments' => method_exists($prompt, 'getArguments') ? $prompt->getArguments() : [],
+            // "promptText" is not part of the spec, and producing it meant
+            // calling getPromptText([]) on every prompt at list time - running
+            // prompt logic with empty context just to render a listing.
+            'arguments' => $prompt->getArguments(),
         ], $this->prompts);
+
+        // Keyed by prompt name, so array_map would emit a JSON object.
+        return array_values($prompts);
     }
 }

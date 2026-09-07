@@ -98,28 +98,65 @@ class MCPService
         return MCPResultBuilder::toolResult($result, $tool->getOutputSchema());
     }
 
-    public function listResources(string $uri): array
+    /**
+     * @return array<int,array<string,mixed>>
+     */
+    public function listResources(string $uri = ''): array
     {
-        if (empty($uri)) {
+        if ('' === $uri) {
             return $this->resources->list();
         }
 
         return $this->resources->get($uri)->listResources($uri);
     }
 
-    public function getResource(string $uri): mixed
+    /**
+     * Reads a resource and returns a spec-shaped ReadResourceResult.
+     *
+     * @return array<string,mixed>
+     */
+    public function getResource(string $uri): array
     {
-        return $this->resources->get($uri)->getContent($uri);
+        if ('' === $uri) {
+            throw new \InvalidArgumentException('Missing required parameter: uri', -32602);
+        }
+
+        $resource = $this->resources->get($uri);
+
+        return MCPResultBuilder::resourceContents(
+            $resource->getContent($uri),
+            $uri,
+            $resource->getMimeType()
+        );
     }
 
+    /**
+     * @return array<int,array<string,mixed>>
+     */
     public function listPrompts(): array
     {
         return $this->prompts->list();
     }
 
-    public function getPrompt(string $name, array $context): string
+    /**
+     * Renders a prompt and returns a spec-shaped GetPromptResult.
+     *
+     * @param array<string,mixed> $arguments
+     *
+     * @return array<string,mixed>
+     */
+    public function getPrompt(string $name, array $arguments): array
     {
-        return $this->prompts->get($name)->getPromptText($context);
+        if ('' === $name) {
+            throw new \InvalidArgumentException('Missing required parameter: name', -32602);
+        }
+
+        $prompt = $this->prompts->get($name);
+
+        return MCPResultBuilder::promptResult(
+            $prompt->getPromptText($arguments),
+            $prompt->getDescription()
+        );
     }
 
     // check if there are any tools registered

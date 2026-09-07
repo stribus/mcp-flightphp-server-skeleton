@@ -93,6 +93,37 @@ class MCPResultBuilder
     }
 
     /**
+     * Builds a ReadResourceResult from whatever a resource returned.
+     *
+     * @param mixed $raw Return value of MCPResourceInterface::getContent()
+     *
+     * @return array<string,mixed>
+     */
+    public static function resourceContents($raw, string $uri, string $mimeType = 'text/plain'): array
+    {
+        // Already a full result.
+        if (is_array($raw) && isset($raw['contents']) && is_array($raw['contents'])) {
+            return $raw;
+        }
+
+        // A single contents entry, identified by carrying its own uri.
+        if (is_array($raw) && isset($raw['uri'])) {
+            return ['contents' => [$raw]];
+        }
+
+        $entry = [
+            'uri' => $uri,
+            'mimeType' => is_array($raw) ? 'application/json' : $mimeType,
+        ];
+
+        // Contents hold either text or base64 "blob"; anything structured is
+        // rendered as JSON text.
+        $entry['text'] = self::stringify($raw);
+
+        return ['contents' => [$entry]];
+    }
+
+    /**
      * Normalises an $arguments declaration into the shape prompts/list expects.
      *
      * Two conventions exist in this codebase: tools use a list of maps each

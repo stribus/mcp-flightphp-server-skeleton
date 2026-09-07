@@ -79,8 +79,8 @@ class MCPServerController
                     break;
 
                 case 'resources/list':
-                    $uri = $request['params']['uri'] ?? '';
-                    $result = $this->service->listResources($uri);
+                    // resources/list takes a pagination cursor, not a uri.
+                    $result = ['resources' => $this->service->listResources()];
 
                     break;
 
@@ -91,15 +91,17 @@ class MCPServerController
                     break;
 
                 case 'prompts/list':
-                    $result = $this->service->listPrompts();
+                    $result = ['prompts' => $this->service->listPrompts()];
 
                     break;
 
                 case 'prompts/get':
                     $params = $request['params'] ?? [];
                     $name = $params['name'] ?? '';
-                    $context = $params['context'] ?? [];
-                    $result = $this->service->getPrompt($name, $context);
+                    // The spec names this "arguments"; "context" is kept as a
+                    // fallback so prompts written against 1.x keep working.
+                    $arguments = $params['arguments'] ?? $params['context'] ?? [];
+                    $result = $this->service->getPrompt($name, $arguments);
 
                     break;
 
