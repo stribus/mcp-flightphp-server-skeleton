@@ -29,7 +29,14 @@ versions from these tags, so `composer.json` carries no `version` field.
 - Server-Sent Events via `app/core/MCPEventStream.php`, behind `MCP_HTTP_SSE`
   (default `false`).
 - `ping`, and silent acceptance of every `notifications/*` message.
+- `.mcp.json` for Claude Code, using `${CLAUDE_PROJECT_DIR:-.}` so the committed file resolves to
+  the right path on every machine. The fallback is deliberate: `CLAUDE_PROJECT_DIR` was not set on
+  Claude Code 2.1.263, and without a default Claude Code passes the unexpanded text through as a
+  literal path.
 - `.vscode/mcp.json`, `mcp-config.example.json` and `scripts/generate-mcp-config.php`.
+- `CLIENTS-MCP-SETUP.md` and its Portuguese translation `CLIENTS-MCP-SETUP.pt-BR.md`, covering
+  Claude Code, VS Code and Claude Desktop in one place, with a comparison of the three formats and
+  a troubleshooting section. These replace `VS-CODE-SETUP.md`.
 - `.gitattributes`, PHPStan (level 5) and PHP-CS-Fixer.
 
 ### Changed
@@ -81,7 +88,8 @@ versions from these tags, so `composer.json` carries no `version` field.
   directory that does not exist.
 - `README.md` documented `POST /tools/list` and similar routes that never existed.
 - `VS-CODE-SETUP.md` used the Claude Desktop config format while presenting it as the VS
-  Code one, and referenced a `MCP-README.md` that is not in the repository.
+  Code one, and referenced a `MCP-README.md` that is not in the repository. It has been
+  replaced by `CLIENTS-MCP-SETUP.md`.
 
 ## [1.0.1]
 

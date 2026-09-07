@@ -142,6 +142,41 @@ php scripts/generate-mcp-config.php
 
 `mcp-config.json` is git-ignored, since its contents are specific to one machine.
 
+### 4. Claude Code Integration
+
+`.mcp.json` ships in the repository root and needs no editing:
+
+```json
+{
+  "mcpServers": {
+    "flightphp-mcp-skeleton": {
+      "type": "stdio",
+      "command": "php",
+      "args": ["${CLAUDE_PROJECT_DIR:-.}/mcp-server.php"]
+    }
+  }
+}
+```
+
+`CLAUDE_PROJECT_DIR` names the project root when Claude Code provides it; the `.` fallback covers
+versions that do not, since project-scoped servers are launched from the project directory.
+
+Open the project in Claude Code and approve the project-scoped server when prompted, then check it
+with `/mcp` or `claude mcp list`.
+
+The HTTP transport works too, though you have to start the server yourself — with stdio, Claude
+Code launches and stops the process for you:
+
+```bash
+composer start
+claude mcp add --transport http flightphp-mcp-http http://localhost:8000/mcp
+```
+
+Avoid `--transport sse`: SSE is deprecated in Claude Code, which directs you to HTTP instead.
+
+Full instructions for all three clients, including troubleshooting, are in
+[`CLIENTS-MCP-SETUP.md`](CLIENTS-MCP-SETUP.md).
+
 ## Creating Tools
 
 Tools are executable functions that can be called by MCP clients.
@@ -386,7 +421,8 @@ The server generates detailed logs in `mcp-server.log` for debugging purposes. M
 
 - [`CHANGELOG.md`](CHANGELOG.md) — what changed in each release
 - [`UPGRADE.md`](UPGRADE.md) — migrating from 1.x to 2.0
-- [`VS-CODE-SETUP.md`](VS-CODE-SETUP.md) — VS Code setup, in Portuguese
+- [`CLIENTS-MCP-SETUP.md`](CLIENTS-MCP-SETUP.md) — connecting Claude Code, VS Code and Claude
+  Desktop, with troubleshooting ([Portuguese](CLIENTS-MCP-SETUP.pt-BR.md))
 
 ## Requirements
 

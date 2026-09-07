@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "flightphp-mcp-skeleton": {
+      "type": "stdio",
+      "command": "php",
+      "args": ["${CLAUDE_PROJECT_DIR:-.}/mcp-server.php"]
+    }
+  }
+}
