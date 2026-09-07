@@ -83,7 +83,11 @@ class MakePromptCommand extends AbstractBaseCommand
             ->setVisibility('protected')
             ->setType('array')
             ->setValue([
-                'input' => [
+                // A list of maps, each carrying its own "name" - the same
+                // convention tools use. The previous template emitted a map
+                // keyed by name while its docblock described this shape.
+                [
+                    'name' => 'input',
                     'type' => 'string',
                     'description' => 'Input text for the prompt',
                     'required' => true,
@@ -94,7 +98,7 @@ class MakePromptCommand extends AbstractBaseCommand
         $getPromptTextMethod = $class->addMethod('getPromptText')
             ->addComment('Returns the prompt text based on the provided context')
             ->setVisibility('public')
-            ->setBody("// Implement the prompt text generation logic here\n// Use the context array to customize the prompt\n\$input = \$context['input'] ?? '';\n\nreturn \"Your prompt text with input: {\$input}\";")
+            ->setBody("// Implement the prompt text generation logic here.\n// \$context holds the arguments sent in prompts/get.\n// Returning a plain string is enough: the framework wraps it into the\n// MCP messages envelope.\n\$input = \$context['input'] ?? '';\n\nreturn \"Your prompt text with input: {\$input}\";")
             ->setReturnType('string');
 
         $getPromptTextMethod->addParameter('context')

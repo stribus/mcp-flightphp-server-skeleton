@@ -33,8 +33,16 @@ abstract class AbstractMCPPrompt implements MCPPromptInterface
         return $this->description;
     }
 
+    /**
+     * Declared arguments, in the shape prompts/list expects.
+     *
+     * This used to return a hardcoded empty array, so every prompt reported no
+     * arguments at all no matter what it declared.
+     *
+     * @return array<int,array<string,mixed>>
+     */
     public function getArguments(): array
     {
-        return [];
+        return MCPResultBuilder::normalizeArguments($this->arguments);
     }
 }

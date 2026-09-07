@@ -4,7 +4,8 @@ A PHP-based Model Context Protocol (MCP) server skeleton that supports both **HT
 
 ## Features
 
-- **Dual Communication**: HTTP REST API and stdio (JSON-RPC 2.0)
+- **Dual Communication**: Streamable HTTP and stdio, both JSON-RPC 2.0
+- **Spec-compliant**: implements MCP revision `2025-06-18`
 - **Auto-discovery**: Automatically discovers tools, prompts, and resources
 - **Code Generation**: Built-in commands to generate new tools and prompts
 - **Flight PHP Framework**: Lightweight and fast PHP framework
@@ -14,7 +15,7 @@ A PHP-based Model Context Protocol (MCP) server skeleton that supports both **HT
 ## Quick Start
 
 1. **Install**
-Run this command from the directory in which you want to install your new Flight PHP application. (this will require PHP 7.4 or newer)
+Run this command from the directory in which you want to install your new Flight PHP application. (requires PHP 8.0 or newer)
 
    ```bash
     composer create-project stribus/mcp-flightphp-server-skeleton cool-project-name
@@ -48,7 +49,7 @@ Run this command from the directory in which you want to install your new Flight
 
 ### 1. HTTP Server Mode
 
-The HTTP server exposes MCP functionality via REST endpoints:
+The HTTP server implements the Streamable HTTP transport:
 
 **Start the server:**
 
@@ -264,6 +265,77 @@ class MyCustomPrompt extends AbstractMCPPrompt
 - **`$arguments`**: Context variables the prompt expects
 - **`getPromptText()`**: Method that generates the prompt text based on context
 
+## Creating Resources
+
+Resources expose readable data. They are keyed by the URI scheme in `getSchema()`, so
+everything under `config://` reaches a resource declaring `protected string $schema = 'config';`.
+See `app/resources/ServerInfoResource.php` for a working example.
+
+```php
+<?php
+
+namespace app\resources;
+
+use app\helpers\AbstractMCPResource;
+
+class MyResource extends AbstractMCPResource
+{
+    protected string $name = 'my-resource';
+    protected string $description = 'What this resource exposes';
+    protected string $schema = 'mydata';
+    protected ?string $uri = 'mydata://items';
+    protected string $mimeType = 'application/json';
+
+    public function listResources(string $uri): array
+    {
+        return [[
+            'uri' => 'mydata://items',
+            'name' => 'my-resource',
+            'title' => 'My Resource',
+            'description' => 'What this resource exposes',
+            'mimeType' => 'application/json',
+        ]];
+    }
+
+    public function getContent(string $uri)
+    {
+        return ['items' => []];
+    }
+}
+```
+
+## What you return, and what the client receives
+
+Tools, prompts and resources return whatever is natural to write. The framework converts
+that into the envelopes the MCP specification requires, so you never assemble them by hand:
+
+| You return from | The client receives |
+|---|---|
+| `Tool::execute()` — any array or scalar | `content[]` with a text block, plus `structuredContent` when the tool declares an `outputSchema` |
+| `Prompt::getPromptText()` — a string | `{description, messages[]}` with a typed content block |
+| `Resource::getContent()` — an array or string | `{contents[]}` carrying `uri`, `mimeType` and `text` |
+
+If you need finer control, return a complete envelope yourself and it is passed through
+untouched — that is how a tool emits an image or a `resource_link`:
+
+```php
+public function execute(array $arguments): mixed
+{
+    return ['content' => [
+        ['type' => 'text', 'text' => 'See also:'],
+        ['type' => 'resource_link', 'uri' => 'file:///README.md', 'name' => 'README.md'],
+    ]];
+}
+```
+
+**Argument validation is automatic.** Anything marked `'required' => true` in `$arguments`
+is checked before `execute()` runs, and a missing value is rejected with `-32602`. Do not
+hand-roll the check.
+
+**Failures inside a tool are not protocol errors.** Throw, and the client receives a normal
+result with `isError: true` and your message — the distinction the specification draws
+between a protocol problem and a tool that could not do its job.
+
 ## Project Structure
 
 ```
@@ -271,9 +343,12 @@ class MyCustomPrompt extends AbstractMCPPrompt
 │   ├── tools/           # Tool implementations
 │   ├── prompts/         # Prompt implementations
 │   ├── resources/       # Resource implementations
-│   ├── helpers/         # Abstract base classes
-│   └── core/            # MCP service registries
+│   ├── helpers/         # Interfaces, abstract bases, MCPResultBuilder
+│   ├── config/          # Bootstrap, routes, environment access
+│   ├── controllers/     # JSON-RPC dispatch
+│   └── core/            # Registries, discovery, HTTP session and SSE
 ├── commands/            # Runway commands for code generation
+├── scripts/             # Install-time helpers
 ├── public/              # HTTP server entry point
 ├── mcp-server.php       # stdio server entry point
 └── vendor/              # Dependencies
@@ -307,9 +382,15 @@ The server generates detailed logs in `mcp-server.log` for debugging purposes. M
 3. **Tool not found**: Check tool is properly registered and follows naming conventions
 4. **Permission errors**: Verify write permissions for log files
 
+## Further reading
+
+- [`CHANGELOG.md`](CHANGELOG.md) — what changed in each release
+- [`UPGRADE.md`](UPGRADE.md) — migrating from 1.x to 2.0
+- [`VS-CODE-SETUP.md`](VS-CODE-SETUP.md) — VS Code setup, in Portuguese
+
 ## Requirements
 
-- PHP 7.4 or higher
+- PHP 8.0 or higher — the code uses union types (`null|array|string`) and `mixed`
 - Composer
 - ext-json extension
 
