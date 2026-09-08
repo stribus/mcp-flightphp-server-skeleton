@@ -124,7 +124,7 @@ edit a placeholder, `composer create-project` writes `mcp-config.json` with the 
 your installation. Regenerate it whenever the project moves:
 
 ```bash
-php scripts/generate-mcp-config.php
+php scripts/generate-mcp-config.php --force
 ```
 
 The result looks like this, with your own path in place:

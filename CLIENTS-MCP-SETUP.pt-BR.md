@@ -124,7 +124,7 @@ vez de pedir que você edite um placeholder, o `composer create-project` escreve
 com o caminho correto da sua instalação. Regere sempre que o projeto mudar de lugar:
 
 ```bash
-php scripts/generate-mcp-config.php
+php scripts/generate-mcp-config.php --force
 ```
 
 O resultado fica assim, com o seu caminho no lugar:

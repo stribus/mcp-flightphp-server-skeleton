@@ -16,8 +16,13 @@ declare(strict_types=1);
 $root = dirname(__DIR__);
 $target = $root . DIRECTORY_SEPARATOR . 'mcp-config.json';
 
-if (true === file_exists($target)) {
-    echo "mcp-config.json already exists, leaving it untouched.\n";
+// Never clobber an edited config by accident: post-create-project-cmd runs
+// this on every install, and a user may have tuned the file by hand. Passing
+// --force is the explicit way to regenerate, e.g. after moving the project.
+$force = in_array('--force', $argv, true);
+
+if (true === file_exists($target) && false === $force) {
+    echo "mcp-config.json already exists. Pass --force to regenerate it.\n";
 
     exit(0);
 }

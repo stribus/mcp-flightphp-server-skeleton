@@ -64,6 +64,14 @@ versions from these tags, so `composer.json` carries no `version` field.
 
 ### Fixed
 
+- `scripts/generate-mcp-config.php` refused to overwrite an existing `mcp-config.json`, while the
+  documentation said to run it to regenerate. The guard is still the default, so
+  `post-create-project-cmd` cannot clobber a hand-edited file, but `--force` now regenerates and
+  the docs say so.
+- `make:prompt` derived the name with `strtolower()`, turning `MyCustomPrompt` into `mycustom`.
+  It now produces snake_case (`my_custom`), matching the `generate_sql` example that ships with
+  the skeleton. Both generators also keep acronyms intact: `GenerateSQLTool` becomes
+  `generate-sql-tool`, not `generate-s-q-l-tool`.
 - **The `make:tool` and `make:prompt` generators were broken in every fresh install.**
   `composer.json` allows `flightphp/runway` `^0.2 || ^1.1`, and since `composer.lock` is not
   versioned, `composer create-project` resolved to 1.x while development happened on 0.2.4. Two

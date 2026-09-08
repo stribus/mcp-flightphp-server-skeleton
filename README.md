@@ -137,7 +137,7 @@ generates `mcp-config.json` with this installation's absolute path already fille
 template lives in `mcp-config.example.json`; regenerate at any time with:
 
 ```bash
-php scripts/generate-mcp-config.php
+php scripts/generate-mcp-config.php --force
 ```
 
 `mcp-config.json` is git-ignored, since its contents are specific to one machine.
@@ -264,7 +264,7 @@ use app\helpers\AbstractMCPPrompt;
 
 class MyCustomPrompt extends AbstractMCPPrompt
 {
-    protected string $name = 'my_custom_prompt';
+    protected string $name = 'my_custom';
     protected string $description = 'Generate custom content based on input';
     protected ?string $title = 'My Custom Prompt';
     

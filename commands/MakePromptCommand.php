@@ -67,7 +67,9 @@ class MakePromptCommand extends AbstractBaseCommand
         $class->addProperty('name')
             ->setVisibility('protected')
             ->setType('string')
-            ->setValue(strtolower(preg_replace('/Prompt$/', '', $prompt)))
+            // snake_case, matching GenerateSQLPrompt's own "generate_sql".
+            // strtolower() alone produced names like "mycustom".
+            ->setValue($this->toSnakeCase((string) preg_replace('/Prompt$/', '', $prompt)))
             ->addComment('@var string Name Unique identifier for the prompt');
 
         $class->addProperty('description')
@@ -143,5 +145,18 @@ class MakePromptCommand extends AbstractBaseCommand
         $appRoot = $this->config['runway']['app_root'] ?? $this->config['app_root'] ?? null;
 
         return is_string($appRoot) ? $appRoot : null;
+    }
+
+    /**
+     * Converts PascalCase to snake_case, keeping acronyms intact.
+     *
+     * "MyCustom" becomes "my_custom" and "GenerateSQL" becomes "generate_sql"
+     * rather than "generate_s_q_l".
+     */
+    protected function toSnakeCase(string $value): string
+    {
+        $separated = preg_replace('/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', '_', $value);
+
+        return strtolower((string) $separated);
     }
 }
