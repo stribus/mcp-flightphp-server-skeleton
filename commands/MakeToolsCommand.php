@@ -34,8 +34,11 @@ class MakeToolsCommand extends AbstractBaseCommand
     public function execute(string $tool)
     {
         $io = $this->app()->io();
-        if (isset($this->config['app_root']) === false) {
+        $appRoot = $this->resolveAppRoot();
+
+        if (null === $appRoot) {
             $io->error('app_root not set in .runway-config.json', true);
+
             return;
         }
 
@@ -43,7 +46,7 @@ class MakeToolsCommand extends AbstractBaseCommand
             $tool .= 'Tool';
         }
 
-        $toolPath = getcwd() . DIRECTORY_SEPARATOR . $this->config['app_root'] . 'tools' . DIRECTORY_SEPARATOR . $tool . '.php';
+        $toolPath = getcwd() . DIRECTORY_SEPARATOR . $appRoot . 'tools' . DIRECTORY_SEPARATOR . $tool . '.php';
         if (file_exists($toolPath) === true) {
             $io->error($tool . ' already exists.', true);
             return;
@@ -148,7 +151,24 @@ class MakeToolsCommand extends AbstractBaseCommand
      */
     protected function persistClass(string $toolName, PhpFile $file)
     {
+        $appRoot = $this->resolveAppRoot();
         $printer = new \Nette\PhpGenerator\PsrPrinter();
-        file_put_contents(getcwd() . DIRECTORY_SEPARATOR . $this->config['app_root'] . 'tools' . DIRECTORY_SEPARATOR . $toolName . '.php', $printer->printFile($file));
+        file_put_contents(getcwd() . DIRECTORY_SEPARATOR . $appRoot . 'tools' . DIRECTORY_SEPARATOR . $toolName . '.php', $printer->printFile($file));
+    }
+
+    /**
+     * Resolves app_root across both supported Runway lines.
+     *
+     * Runway 0.2 hands the command the contents of .runway-config.json, so
+     * app_root sits at the top level. Runway 1.x hands it the application
+     * config instead, with .runway-config.json merged under a "runway" key.
+     * Reading only one shape breaks the generators on the other line - and
+     * since composer.lock is not versioned, a fresh install resolves to 1.x.
+     */
+    protected function resolveAppRoot(): ?string
+    {
+        $appRoot = $this->config['runway']['app_root'] ?? $this->config['app_root'] ?? null;
+
+        return is_string($appRoot) ? $appRoot : null;
     }
 }
