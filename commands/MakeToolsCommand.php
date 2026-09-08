@@ -71,7 +71,7 @@ class MakeToolsCommand extends AbstractBaseCommand
 
         // Kebab-case, matching the convention HelloWorldTool already uses.
         // strtolower() alone produced names like "myawesometool".
-        $toolName = strtolower((string) preg_replace('/(?<!^)[A-Z]/', '-$0', $tool));
+        $toolName = $this->toKebabCase($tool);
 
         $class->addProperty('name')
             ->setVisibility('protected')
@@ -170,5 +170,18 @@ class MakeToolsCommand extends AbstractBaseCommand
         $appRoot = $this->config['runway']['app_root'] ?? $this->config['app_root'] ?? null;
 
         return is_string($appRoot) ? $appRoot : null;
+    }
+
+    /**
+     * Converts PascalCase to kebab-case, keeping acronyms intact.
+     *
+     * "MyCustomTool" becomes "my-custom-tool" and "GenerateSQLTool" becomes
+     * "generate-sql-tool" rather than "generate-s-q-l-tool".
+     */
+    protected function toKebabCase(string $value): string
+    {
+        $separated = preg_replace('/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', '-', $value);
+
+        return strtolower((string) $separated);
     }
 }
