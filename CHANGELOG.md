@@ -64,6 +64,15 @@ versions from these tags, so `composer.json` carries no `version` field.
 
 ### Fixed
 
+- **The `make:tool` and `make:prompt` generators were broken in every fresh install.**
+  `composer.json` allows `flightphp/runway` `^0.2 || ^1.1`, and since `composer.lock` is not
+  versioned, `composer create-project` resolved to 1.x while development happened on 0.2.4. Two
+  incompatibilities followed. Runway 1.x does `$config = require 'app/config/config.php'` and then
+  writes into it as an array; that file returned nothing, so the generators died with "Cannot use
+  a scalar value as an array". And 1.x passes the application config to commands, moving
+  `app_root` under a `runway` key, where the commands were not looking. `config.php` now returns
+  an array, and both commands resolve `app_root` from either shape, so the generators work on
+  both lines.
 - The skeleton could not run on a case-sensitive filesystem: `MCPService` imported
   `app\Helpers\ClassAutoLoader` with a capital `H` while the class declares
   `app\helpers`. Fatal on Linux, silent on Windows.
