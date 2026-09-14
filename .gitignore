@@ -1,5 +1,6 @@
 vendor/
-.vscode/
+.vscode/*
+!.vscode/mcp.json
 
 composer.lock
 .vagrant/
@@ -7,3 +8,5 @@ composer.lock
 .php-cs-fixer.cache
 .env
 mcp-server.log
+app/log/
+mcp-config.json

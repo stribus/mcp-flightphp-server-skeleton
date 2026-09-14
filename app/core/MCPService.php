@@ -2,9 +2,11 @@
 
 namespace app\core;
 
+use app\helpers\AbstractMCPTool;
 use app\helpers\ClassAutoLoader;
 use app\helpers\MCPPromptInterface;
 use app\helpers\MCPResourceInterface;
+use app\helpers\MCPResultBuilder;
 use app\helpers\MCPToolInterface;
 
 class MCPService
@@ -61,33 +63,100 @@ class MCPService
         return $this->tools->list();
     }
 
-    public function callTool(array $params): mixed
+    /**
+     * Runs a tool and returns a spec-shaped CallToolResult.
+     *
+     * @param array<string,mixed> $params
+     *
+     * @return array<string,mixed>
+     */
+    public function callTool(array $params): array
     {
-        return $this->tools->get($params['name'])->execute($params['arguments'] ?? []);
+        $name = $params['name'] ?? null;
+
+        if (false === is_string($name) || '' === $name) {
+            throw new \InvalidArgumentException('Missing required parameter: name', -32602);
+        }
+
+        // A missing tool or a missing argument is a protocol error, so it is
+        // raised and surfaces as a JSON-RPC error.
+        $tool = $this->tools->get($name);
+        $arguments = $params['arguments'] ?? [];
+
+        if ($tool instanceof AbstractMCPTool) {
+            $tool->validateArguments($arguments);
+        }
+
+        try {
+            $result = $tool->execute($arguments);
+        } catch (\Throwable $e) {
+            // A failure inside the tool is an execution error, which the spec
+            // reports in the result with isError - never as a JSON-RPC error.
+            return MCPResultBuilder::errorResult($e->getMessage());
+        }
+
+        return MCPResultBuilder::toolResult($result, $tool->getOutputSchema());
     }
 
-    public function listResources(string $uri): array
+    /**
+     * @return array<int,array<string,mixed>>
+     */
+    public function listResources(string $uri = ''): array
     {
-        if (empty($uri)) {
+        if ('' === $uri) {
             return $this->resources->list();
         }
 
         return $this->resources->get($uri)->listResources($uri);
     }
 
-    public function getResource(string $uri): mixed
+    /**
+     * Reads a resource and returns a spec-shaped ReadResourceResult.
+     *
+     * @return array<string,mixed>
+     */
+    public function getResource(string $uri): array
     {
-        return $this->resources->get($uri)->getContent($uri);
+        if ('' === $uri) {
+            throw new \InvalidArgumentException('Missing required parameter: uri', -32602);
+        }
+
+        $resource = $this->resources->get($uri);
+
+        return MCPResultBuilder::resourceContents(
+            $resource->getContent($uri),
+            $uri,
+            $resource->getMimeType()
+        );
     }
 
+    /**
+     * @return array<int,array<string,mixed>>
+     */
     public function listPrompts(): array
     {
         return $this->prompts->list();
     }
 
-    public function getPrompt(string $name, array $context): string
+    /**
+     * Renders a prompt and returns a spec-shaped GetPromptResult.
+     *
+     * @param array<string,mixed> $arguments
+     *
+     * @return array<string,mixed>
+     */
+    public function getPrompt(string $name, array $arguments): array
     {
-        return $this->prompts->get($name)->getPromptText($context);
+        if ('' === $name) {
+            throw new \InvalidArgumentException('Missing required parameter: name', -32602);
+        }
+
+        $prompt = $this->prompts->get($name);
+
+        return MCPResultBuilder::promptResult(
+            $prompt->getPromptText($arguments),
+            $prompt->getDescription()
+        );
     }
 
     // check if there are any tools registered

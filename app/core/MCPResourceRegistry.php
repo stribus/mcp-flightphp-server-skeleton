@@ -27,18 +27,42 @@ class MCPResourceRegistry
             $schema = strstr($schema, '://', true) ?: $schema;
         }
         if (!isset($this->resources[strtolower($schema)])) {
-            throw new \Exception("Resource '{$schema}' not found", -32601);
+            // The spec defines a dedicated code for a missing resource.
+            throw new \Exception("Resource not found: {$schema}", -32002);
         }
 
         return $this->resources[strtolower($schema)];
     }
 
-    public function list(): array {
+    /**
+     * @return array<int,array<string,mixed>>
+     */
+    public function list(): array
+    {
+        $resources = [];
 
-        return array_map(fn($resource) => [
-            'name' => $resource->getName(),
-            'description' => $resource->getDescription(),
-            'title' => $resource->getTitle() ?? $resource->getName(),
-        ], $this->resources);
+        foreach ($this->resources as $resource) {
+            // A resource may expose several entries; when it exposes none,
+            // fall back to describing itself.
+            $entries = $resource->listResources($resource->getUri());
+
+            if ([] === $entries) {
+                $entries = [[
+                    // "uri" is required on every Resource and was missing
+                    // entirely from this listing before.
+                    'uri' => $resource->getUri(),
+                    'name' => $resource->getName(),
+                    'title' => $resource->getTitle(),
+                    'description' => $resource->getDescription(),
+                    'mimeType' => $resource->getMimeType(),
+                ]];
+            }
+
+            foreach ($entries as $entry) {
+                $resources[] = $entry;
+            }
+        }
+
+        return $resources;
     }
 }

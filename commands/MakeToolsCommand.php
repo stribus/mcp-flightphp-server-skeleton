@@ -34,8 +34,11 @@ class MakeToolsCommand extends AbstractBaseCommand
     public function execute(string $tool)
     {
         $io = $this->app()->io();
-        if (isset($this->config['app_root']) === false) {
+        $appRoot = $this->resolveAppRoot();
+
+        if (null === $appRoot) {
             $io->error('app_root not set in .runway-config.json', true);
+
             return;
         }
 
@@ -43,7 +46,7 @@ class MakeToolsCommand extends AbstractBaseCommand
             $tool .= 'Tool';
         }
 
-        $toolPath = getcwd() . DIRECTORY_SEPARATOR . $this->config['app_root'] . 'tools' . DIRECTORY_SEPARATOR . $tool . '.php';
+        $toolPath = getcwd() . DIRECTORY_SEPARATOR . $appRoot . 'tools' . DIRECTORY_SEPARATOR . $tool . '.php';
         if (file_exists($toolPath) === true) {
             $io->error($tool . ' already exists.', true);
             return;
@@ -66,10 +69,14 @@ class MakeToolsCommand extends AbstractBaseCommand
 
         $class->addComment('Tool for ' . $tool);
 
+        // Kebab-case, matching the convention HelloWorldTool already uses.
+        // strtolower() alone produced names like "myawesometool".
+        $toolName = $this->toKebabCase($tool);
+
         $class->addProperty('name')
             ->setVisibility('protected')
             ->setType('string')
-            ->setValue(strtolower($tool))
+            ->setValue($toolName)
             ->addComment('@var string Name Unique identifier for the tool');
 
         $class->addProperty('description')
@@ -94,11 +101,16 @@ class MakeToolsCommand extends AbstractBaseCommand
             ->setVisibility('protected')
             ->setType('null|array|string')
             ->setValue([
-                'type' => 'array',
-                'items' => [
-                    'type' => 'string',
-                    'description' => 'Output of the tool',
+                // MCP requires outputSchema to describe an object; the previous
+                // default used 'array', which no client would accept.
+                'type' => 'object',
+                'properties' => [
+                    'result' => [
+                        'type' => 'string',
+                        'description' => 'Output of the tool',
+                    ],
                 ],
+                'required' => ['result'],
             ])
             ->addComment('@var null|array|string Output schema Schema of the output returned by the tool. Can be a JSON schema or a string description.');
 
@@ -110,7 +122,13 @@ class MakeToolsCommand extends AbstractBaseCommand
         $executeMethod = $class->addMethod('execute')
             ->addComment('Executes the tool with the provided arguments')
             ->setVisibility('public')
-            ->setBody("// Implement the tool execution logic here \nreturn [];")
+            ->setBody(
+                "// Implement the tool execution logic here.\n"
+                . "// Returning a plain array is enough: the framework wraps it into the\n"
+                . "// MCP content envelope and, because this tool declares an outputSchema,\n"
+                . "// also into structuredContent.\n"
+                . "return ['result' => ''];"
+            )
             ->setReturnType('array');
 
         $executeMethod->addParameter('arguments')
@@ -133,7 +151,37 @@ class MakeToolsCommand extends AbstractBaseCommand
      */
     protected function persistClass(string $toolName, PhpFile $file)
     {
+        $appRoot = $this->resolveAppRoot();
         $printer = new \Nette\PhpGenerator\PsrPrinter();
-        file_put_contents(getcwd() . DIRECTORY_SEPARATOR . $this->config['app_root'] . 'tools' . DIRECTORY_SEPARATOR . $toolName . '.php', $printer->printFile($file));
+        file_put_contents(getcwd() . DIRECTORY_SEPARATOR . $appRoot . 'tools' . DIRECTORY_SEPARATOR . $toolName . '.php', $printer->printFile($file));
+    }
+
+    /**
+     * Resolves app_root across both supported Runway lines.
+     *
+     * Runway 0.2 hands the command the contents of .runway-config.json, so
+     * app_root sits at the top level. Runway 1.x hands it the application
+     * config instead, with .runway-config.json merged under a "runway" key.
+     * Reading only one shape breaks the generators on the other line - and
+     * since composer.lock is not versioned, a fresh install resolves to 1.x.
+     */
+    protected function resolveAppRoot(): ?string
+    {
+        $appRoot = $this->config['runway']['app_root'] ?? $this->config['app_root'] ?? null;
+
+        return is_string($appRoot) ? $appRoot : null;
+    }
+
+    /**
+     * Converts PascalCase to kebab-case, keeping acronyms intact.
+     *
+     * "MyCustomTool" becomes "my-custom-tool" and "GenerateSQLTool" becomes
+     * "generate-sql-tool" rather than "generate-s-q-l-tool".
+     */
+    protected function toKebabCase(string $value): string
+    {
+        $separated = preg_replace('/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', '-', $value);
+
+        return strtolower((string) $separated);
     }
 }

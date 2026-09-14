@@ -16,7 +16,7 @@
         }
     ],
     "require": {
-        "php": "^7.4 || ^8.0",
+        "php": "^8.0",
         "ext-json": "*",
         "flightphp/core": "^3.0",
         "flightphp/runway": "^0.2 || ^1.1",
@@ -37,7 +37,8 @@
 			"@php -r \"@mkdir('app/prompts/');\"",
 			"@php -r \"@mkdir('app/resources/');\"",
 			"@php -r \"@mkdir('app/tools/');\"",
-			"@php -r \"@mkdir('app/log/');\""
+			"@php -r \"@mkdir('app/log/');\"",
+			"@php scripts/generate-mcp-config.php"
 		]
     },
     "require-dev": {

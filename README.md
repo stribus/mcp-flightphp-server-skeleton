@@ -4,7 +4,8 @@ A PHP-based Model Context Protocol (MCP) server skeleton that supports both **HT
 
 ## Features
 
-- **Dual Communication**: HTTP REST API and stdio (JSON-RPC 2.0)
+- **Dual Communication**: Streamable HTTP and stdio, both JSON-RPC 2.0
+- **Spec-compliant**: implements MCP revision `2025-06-18`
 - **Auto-discovery**: Automatically discovers tools, prompts, and resources
 - **Code Generation**: Built-in commands to generate new tools and prompts
 - **Flight PHP Framework**: Lightweight and fast PHP framework
@@ -14,7 +15,7 @@ A PHP-based Model Context Protocol (MCP) server skeleton that supports both **HT
 ## Quick Start
 
 1. **Install**
-Run this command from the directory in which you want to install your new Flight PHP application. (this will require PHP 7.4 or newer)
+Run this command from the directory in which you want to install your new Flight PHP application. (requires PHP 8.0 or newer)
 
    ```bash
     composer create-project stribus/mcp-flightphp-server-skeleton cool-project-name
@@ -48,7 +49,7 @@ Run this command from the directory in which you want to install your new Flight
 
 ### 1. HTTP Server Mode
 
-The HTTP server exposes MCP functionality via REST endpoints:
+The HTTP server implements the Streamable HTTP transport:
 
 **Start the server:**
 
@@ -58,24 +59,39 @@ composer start
 
 **Available endpoints:**
 
-- `GET /` - Server information
-- `POST /tools/list` - List available tools
-- `POST /tools/call` - Execute a tool
-- `POST /prompts/list` - List available prompts
-- `POST /prompts/get` - Get a prompt
-- `POST /resources/list` - List available resources
-- `POST /resources/read` - Read a resource
+MCP is a JSON-RPC protocol, not REST: every method travels in the body of a POST to a
+single endpoint. There is no `/tools/list` URL.
+
+- `POST /mcp` - the MCP endpoint. Every JSON-RPC method goes here.
+- `GET /mcp` - Server-Sent Events stream. Disabled by default; see below.
+- `DELETE /mcp` - terminate a session.
+- `GET /health` - health check.
+- `GET /` - this documentation, as JSON.
+
+**Sessions:** a successful `initialize` returns an `Mcp-Session-Id` header. Send it back on
+every subsequent request. After initialization, clients must also send
+`MCP-Protocol-Version: 2025-06-18`.
+
+**Origin validation:** the endpoint rejects browser requests from unknown origins with 403,
+as the spec requires to prevent DNS rebinding attacks. Configure with `MCP_ALLOWED_ORIGINS`.
 
 **Test the HTTP server:**
 
 ```bash
-# Windows PowerShell
+# Windows PowerShell - full transport test suite
 .\test-http-server.ps1
 
-# Or manually test endpoints
-curl -X POST http://localhost:8000/tools/list
-curl -X POST http://localhost:8000/tools/call -H "Content-Type: application/json" -d '{"name":"hello-world-tool","arguments":{"firstName":"John","lastName":"Doe"}}'
+# Or manually
+curl -i -X POST http://localhost:8000/mcp -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}'
 ```
+
+**Server-Sent Events are off by default.** `GET /mcp` answers `405`, which the specification
+explicitly permits. The reason is measured, not theoretical: PHP's built-in server
+(`composer start`) handles one request at a time, and on Windows it cannot fork at all -
+setting `PHP_CLI_SERVER_WORKERS` makes PHP print `forking is not supported on this platform`.
+An open stream would therefore make the whole server unresponsive. Set `MCP_HTTP_SSE=true`
+only when running behind Apache or nginx with php-fpm.
 
 ### 2. stdio Mode (JSON-RPC 2.0)
 
@@ -101,21 +117,65 @@ echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hello-worl
 
 ### 3. VS Code Integration
 
-For VS Code Copilot integration, configure the MCP server in your VS Code settings:
-
-**mcp-config.json example:**
+This repository ships a ready-to-use `.vscode/mcp.json`. It needs no editing, because
+VS Code expands `${workspaceFolder}` to wherever you cloned the project:
 
 ```json
 {
-  "mcpServers": {
-    "php-mcp-server": {
+  "servers": {
+    "flightphp-mcp-skeleton": {
+      "type": "stdio",
       "command": "php",
-      "args": ["path/to/mcp-server.php"],
-      "env": {}
+      "args": ["${workspaceFolder}/mcp-server.php"]
     }
   }
 }
 ```
+
+For clients that cannot expand variables, such as Claude Desktop, `composer create-project`
+generates `mcp-config.json` with this installation's absolute path already filled in. A
+template lives in `mcp-config.example.json`; regenerate at any time with:
+
+```bash
+php scripts/generate-mcp-config.php --force
+```
+
+`mcp-config.json` is git-ignored, since its contents are specific to one machine.
+
+### 4. Claude Code Integration
+
+`.mcp.json` ships in the repository root and needs no editing:
+
+```json
+{
+  "mcpServers": {
+    "flightphp-mcp-skeleton": {
+      "type": "stdio",
+      "command": "php",
+      "args": ["${CLAUDE_PROJECT_DIR:-.}/mcp-server.php"]
+    }
+  }
+}
+```
+
+`CLAUDE_PROJECT_DIR` names the project root when Claude Code provides it; the `.` fallback covers
+versions that do not, since project-scoped servers are launched from the project directory.
+
+Open the project in Claude Code and approve the project-scoped server when prompted, then check it
+with `/mcp` or `claude mcp list`.
+
+The HTTP transport works too, though you have to start the server yourself — with stdio, Claude
+Code launches and stops the process for you:
+
+```bash
+composer start
+claude mcp add --transport http flightphp-mcp-http http://localhost:8000/mcp
+```
+
+Avoid `--transport sse`: SSE is deprecated in Claude Code, which directs you to HTTP instead.
+
+Full instructions for all three clients, including troubleshooting, are in
+[`CLIENTS-MCP-SETUP.md`](CLIENTS-MCP-SETUP.md).
 
 ## Creating Tools
 
@@ -204,7 +264,7 @@ use app\helpers\AbstractMCPPrompt;
 
 class MyCustomPrompt extends AbstractMCPPrompt
 {
-    protected string $name = 'my_custom_prompt';
+    protected string $name = 'my_custom';
     protected string $description = 'Generate custom content based on input';
     protected ?string $title = 'My Custom Prompt';
     
@@ -240,6 +300,77 @@ class MyCustomPrompt extends AbstractMCPPrompt
 - **`$arguments`**: Context variables the prompt expects
 - **`getPromptText()`**: Method that generates the prompt text based on context
 
+## Creating Resources
+
+Resources expose readable data. They are keyed by the URI scheme in `getSchema()`, so
+everything under `config://` reaches a resource declaring `protected string $schema = 'config';`.
+See `app/resources/ServerInfoResource.php` for a working example.
+
+```php
+<?php
+
+namespace app\resources;
+
+use app\helpers\AbstractMCPResource;
+
+class MyResource extends AbstractMCPResource
+{
+    protected string $name = 'my-resource';
+    protected string $description = 'What this resource exposes';
+    protected string $schema = 'mydata';
+    protected ?string $uri = 'mydata://items';
+    protected string $mimeType = 'application/json';
+
+    public function listResources(string $uri): array
+    {
+        return [[
+            'uri' => 'mydata://items',
+            'name' => 'my-resource',
+            'title' => 'My Resource',
+            'description' => 'What this resource exposes',
+            'mimeType' => 'application/json',
+        ]];
+    }
+
+    public function getContent(string $uri)
+    {
+        return ['items' => []];
+    }
+}
+```
+
+## What you return, and what the client receives
+
+Tools, prompts and resources return whatever is natural to write. The framework converts
+that into the envelopes the MCP specification requires, so you never assemble them by hand:
+
+| You return from | The client receives |
+|---|---|
+| `Tool::execute()` — any array or scalar | `content[]` with a text block, plus `structuredContent` when the tool declares an `outputSchema` |
+| `Prompt::getPromptText()` — a string | `{description, messages[]}` with a typed content block |
+| `Resource::getContent()` — an array or string | `{contents[]}` carrying `uri`, `mimeType` and `text` |
+
+If you need finer control, return a complete envelope yourself and it is passed through
+untouched — that is how a tool emits an image or a `resource_link`:
+
+```php
+public function execute(array $arguments): mixed
+{
+    return ['content' => [
+        ['type' => 'text', 'text' => 'See also:'],
+        ['type' => 'resource_link', 'uri' => 'file:///README.md', 'name' => 'README.md'],
+    ]];
+}
+```
+
+**Argument validation is automatic.** Anything marked `'required' => true` in `$arguments`
+is checked before `execute()` runs, and a missing value is rejected with `-32602`. Do not
+hand-roll the check.
+
+**Failures inside a tool are not protocol errors.** Throw, and the client receives a normal
+result with `isError: true` and your message — the distinction the specification draws
+between a protocol problem and a tool that could not do its job.
+
 ## Project Structure
 
 ```
@@ -247,9 +378,12 @@ class MyCustomPrompt extends AbstractMCPPrompt
 │   ├── tools/           # Tool implementations
 │   ├── prompts/         # Prompt implementations
 │   ├── resources/       # Resource implementations
-│   ├── helpers/         # Abstract base classes
-│   └── core/            # MCP service registries
+│   ├── helpers/         # Interfaces, abstract bases, MCPResultBuilder
+│   ├── config/          # Bootstrap, routes, environment access
+│   ├── controllers/     # JSON-RPC dispatch
+│   └── core/            # Registries, discovery, HTTP session and SSE
 ├── commands/            # Runway commands for code generation
+├── scripts/             # Install-time helpers
 ├── public/              # HTTP server entry point
 ├── mcp-server.php       # stdio server entry point
 └── vendor/              # Dependencies
@@ -283,9 +417,16 @@ The server generates detailed logs in `mcp-server.log` for debugging purposes. M
 3. **Tool not found**: Check tool is properly registered and follows naming conventions
 4. **Permission errors**: Verify write permissions for log files
 
+## Further reading
+
+- [`CHANGELOG.md`](CHANGELOG.md) — what changed in each release
+- [`UPGRADE.md`](UPGRADE.md) — migrating from 1.x to 2.0
+- [`CLIENTS-MCP-SETUP.md`](CLIENTS-MCP-SETUP.md) — connecting Claude Code, VS Code and Claude
+  Desktop, with troubleshooting ([Portuguese](CLIENTS-MCP-SETUP.pt-BR.md))
+
 ## Requirements
 
-- PHP 7.4 or higher
+- PHP 8.0 or higher — the code uses union types (`null|array|string`) and `mixed`
 - Composer
 - ext-json extension
 
