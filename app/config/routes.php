@@ -30,11 +30,7 @@ $mcpAllowedOrigins = Env::list('MCP_ALLOWED_ORIGINS', [
  * Answers with a JSON-RPC error and stops.
  */
 $mcpFail = function (int $status, int $code, string $message, $id = null): void {
-    Flight::jsonHalt([
-        'jsonrpc' => '2.0',
-        'id' => $id,
-        'error' => ['code' => $code, 'message' => $message],
-    ], $status);
+    Flight::jsonHalt(MCPServerController::error($id, $code, $message), $status);
 };
 
 /**
@@ -118,7 +114,17 @@ $app->route('POST ' . MCP_ENDPOINT, function () use ($mcpFail) {
         $mcpFail(400, -32700, 'Parse error');
     }
 
-    $response = (new MCPServerController())->handleRequest($request);
+    try {
+        $response = (new MCPServerController())->handleRequest($request);
+    } catch (\Throwable $e) {
+        // handleRequest() already turns failures into JSON-RPC errors. This is
+        // the last line of defence: without it an unexpected Throwable falls
+        // through to Tracy, which answers with an HTML debug page and HTTP 200
+        // - something an automated client would read as success.
+        $mcpFail(500, -32603, 'Internal error', is_array($request) ? ($request['id'] ?? null) : null);
+
+        return;
+    }
 
     if (null === $response) {
         // Notifications and responses get 202 with no body, per the spec.

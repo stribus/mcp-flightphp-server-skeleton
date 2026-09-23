@@ -43,6 +43,12 @@ class MCPServerController
             return $isNotification ? null : $this->error($request['id'] ?? null, -32600, 'Invalid Request');
         }
 
+        // JSON-RPC 2.0 allows an id to be a string, a number or null. Anything
+        // else (an array, an object, a boolean) makes the request invalid.
+        if (false === $isNotification && false === self::isValidId($request['id'])) {
+            return $this->error(null, -32600, 'Invalid Request');
+        }
+
         $method = $request['method'];
         $id = $request['id'] ?? null;
 
@@ -211,9 +217,22 @@ class MCPServerController
     }
 
     /**
+     * Builds a JSON-RPC error response.
+     *
+     * Public and static so both transports can produce the same envelope for
+     * failures that happen before the controller runs (bad Origin, parse
+     * errors, unknown sessions).
+     *
+     * $id is deliberately untyped. It used to be ?int, but JSON-RPC ids are
+     * routinely strings, and a TypeError raised here - inside the very code
+     * that reports errors - escaped every catch block and killed the stdio
+     * server. An id that is not a valid JSON-RPC id is reported as null.
+     *
+     * @param mixed $id
+     *
      * @return array<string,mixed>
      */
-    private function error(?int $id, int $code, string $message, ?string $data = null): array
+    public static function error($id, int $code, string $message, ?string $data = null): array
     {
         $error = [
             'code' => $code,
@@ -226,8 +245,18 @@ class MCPServerController
 
         return [
             'jsonrpc' => '2.0',
-            'id' => $id,
+            'id' => self::isValidId($id) ? $id : null,
             'error' => $error,
         ];
+    }
+
+    /**
+     * True for the id types JSON-RPC 2.0 permits: string, integer or null.
+     *
+     * @param mixed $id
+     */
+    public static function isValidId($id): bool
+    {
+        return null === $id || is_int($id) || is_string($id);
     }
 }

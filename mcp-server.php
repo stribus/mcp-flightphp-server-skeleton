@@ -132,19 +132,15 @@ class MCPStdioServer
 
     /**
      * Send JSON-RPC error response
+     *
+     * $id is untyped on purpose: JSON-RPC ids are often strings, and a
+     * TypeError thrown while reporting an error has nowhere left to go.
+     *
+     * @param mixed $id
      */
-    private function sendError(?int $id, int $code, string $message): void
+    private function sendError($id, int $code, string $message): void
     {
-        $response = [
-            'jsonrpc' => '2.0',
-            'id' => $id,
-            'error' => [
-                'code' => $code,
-                'message' => $message
-            ]
-        ];
-        
-        $this->sendResponse($response);
+        $this->sendResponse(MCPServerController::error($id, $code, $message));
     }
 
     /**
