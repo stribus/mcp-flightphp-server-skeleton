@@ -46,16 +46,24 @@ abstract class AbstractMCPTool implements MCPToolInterface
         $properties = [];
         $required = [];
 
-        foreach (MCPResultBuilder::normalizeArguments($this->arguments) as $index => $parameter) {
-            $declared = $this->arguments[$index] ?? [];
+        // Iterate the declaration itself rather than normalizeArguments()'s
+        // output: that list is reindexed from 0, so looking the "type" back up
+        // by index only worked for list-shaped $arguments. With the map-keyed
+        // convention every argument was silently announced as a string.
+        foreach ($this->arguments as $key => $parameter) {
+            $name = self::argumentName($key, $parameter);
 
-            $properties[$parameter['name']] = [
-                'type' => $declared['type'] ?? 'string',
-                'description' => $parameter['description'],
+            if (null === $name) {
+                continue;
+            }
+
+            $properties[$name] = [
+                'type' => $parameter['type'] ?? 'string',
+                'description' => (string) ($parameter['description'] ?? ''),
             ];
 
-            if (true === $parameter['required']) {
-                $required[] = $parameter['name'];
+            if (true === (bool) ($parameter['required'] ?? false)) {
+                $required[] = $name;
             }
         }
 
@@ -120,9 +128,18 @@ abstract class AbstractMCPTool implements MCPToolInterface
                 'properties' => [],
             ];
 
-            foreach ($this->outputSchema as $output) {
+            foreach ($this->outputSchema as $key => $output) {
                 if (is_array($output)) {
-                    $outputSchema['properties'][$output['name']] = [
+                    // Same two conventions as $arguments: a list of maps with
+                    // "name", or a map keyed by name. Reading only $output['name']
+                    // broke the second one with an undefined-key warning.
+                    $name = self::argumentName($key, $output);
+
+                    if (null === $name) {
+                        continue;
+                    }
+
+                    $outputSchema['properties'][$name] = [
                         'type' => $output['type'] ?? 'string',
                         'description' => $output['description'] ?? '',
                     ];
@@ -143,5 +160,26 @@ abstract class AbstractMCPTool implements MCPToolInterface
         }
 
         return null;
+    }
+
+    /**
+     * Resolves a declared field's name under either supported convention.
+     *
+     * A list of maps carries its own "name"; a map keyed by name does not.
+     * Mirrors MCPResultBuilder::normalizeArguments(), but keeps the caller on
+     * the original entry so fields such as "type" are not lost.
+     *
+     * @param int|string $key
+     * @param mixed      $declaration
+     */
+    private static function argumentName($key, $declaration): ?string
+    {
+        if (false === is_array($declaration)) {
+            return null;
+        }
+
+        $name = $declaration['name'] ?? (is_string($key) ? $key : null);
+
+        return null === $name ? null : (string) $name;
     }
 }
