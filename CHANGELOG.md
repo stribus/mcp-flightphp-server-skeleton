@@ -41,6 +41,13 @@ versions from these tags, so `composer.json` carries no `version` field.
 
 ### Changed
 
+- `flightphp/runway` is required at `^1.2` instead of `^0.2 || ^1.1`. Because `composer.lock`
+  is not versioned, fresh installs were already resolving 1.x while development stayed on 0.2 —
+  the gap that hid the generator bug fixed below. The constraint now matches what is tested.
+- `MCPSessionStore::push()` returns whether the message was queued. It is the extension point
+  for server-initiated notifications over SSE; the README documents it, along with the need to
+  bound `MCP_HTTP_SSE_MAX_SECONDS` so open streams cannot exhaust the php-fpm pool.
+
 - **Breaking.** The HTTP endpoint moved from `POST /` to `POST /mcp`. `GET` and `DELETE`
   are served on the same path.
 - **Breaking.** `tools/list`, `prompts/list` and `resources/list` return arrays wrapped in
@@ -64,6 +71,32 @@ versions from these tags, so `composer.json` carries no `version` field.
 
 ### Fixed
 
+- **A JSON-RPC request with a string `id` crashed the stdio server.** Error envelopes were built
+  by functions typed `?int $id`, while JSON-RPC allows string ids and clients use them routinely.
+  The resulting `TypeError` was raised inside the error-reporting code itself, escaped every
+  `catch`, and reached the global handler, which exited — one ordinary request killed the server.
+  Over HTTP the same error fell through to Tracy and came back as an HTML page with status 200.
+  Ids are now accepted as the spec allows, ids of any other type are rejected with `-32600`, and
+  the HTTP route answers any unexpected failure with a JSON-RPC `-32603` and status 500.
+- `tools/list` announced every argument as `"type": "string"` when a tool declared `$arguments`
+  as a map keyed by name. The declared types are now preserved under both conventions, in the
+  input schema and in the output schema.
+- `initialize` could be failed by a single resource whose `listResources()` threw, because
+  deciding the capabilities built the full resource listing. Capabilities are now decided from
+  the registries without running any user code.
+- `GET /` and `GET /health` had lost their CORS headers and `OPTIONS` handling when the MCP
+  endpoint moved to `/mcp`. They are restored; strict `Origin` validation remains on `/mcp`.
+- A required argument whose value was an empty string was rejected as missing. Required now
+  means present: only an absent key or `null` counts as missing.
+- A tool implementing `MCPToolInterface` directly, instead of extending `AbstractMCPTool`,
+  silently skipped argument validation. Any tool that provides `validateArguments()` now has it
+  called.
+- `MCPSessionStore` lost messages under concurrent writes — 757 of 3200 delivered in a test
+  with 8 writers — and a `touch()` racing a `DELETE` could revive a destroyed session. Updates
+  now happen under a single exclusive lock and never recreate a deleted session.
+- Runway's own `config:get`, `config:set` and `config:migrate` commands work. They depend on
+  `app/config/config.php` returning an array, which it did not; the same fix that repaired the
+  generators on Runway 1.x repaired them too.
 - `scripts/generate-mcp-config.php` refused to overwrite an existing `mcp-config.json`, while the
   documentation said to run it to regenerate. The guard is still the default, so
   `post-create-project-cmd` cannot clobber a hand-edited file, but `--force` now regenerates and

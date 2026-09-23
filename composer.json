@@ -19,7 +19,7 @@
         "php": "^8.0",
         "ext-json": "*",
         "flightphp/core": "^3.0",
-        "flightphp/runway": "^0.2 || ^1.1",
+        "flightphp/runway": "^1.2",
         "tracy/tracy": "^2.9",
         "vlucas/phpdotenv": "^5.6"
     },

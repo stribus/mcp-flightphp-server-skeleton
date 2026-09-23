@@ -93,6 +93,15 @@ setting `PHP_CLI_SERVER_WORKERS` makes PHP print `forking is not supported on th
 An open stream would therefore make the whole server unresponsive. Set `MCP_HTTP_SSE=true`
 only when running behind Apache or nginx with php-fpm.
 
+Even then, every open stream occupies one php-fpm worker for as long as it lasts. With the
+default `MCP_HTTP_SSE_MAX_SECONDS=0` (unbounded), a few idle clients can exhaust a small pool
+and starve every other request. Set a limit — clients reconnect on their own — and size
+`pm.max_children` for the number of concurrent streams you expect.
+
+Server-initiated messages are queued with `MCPSessionStore::push($sessionId, $message)`; the
+open stream for that session delivers them. Nothing in the skeleton calls `push()` yet — it is
+the extension point for notifications your own server needs to send.
+
 ### 2. stdio Mode (JSON-RPC 2.0)
 
 The stdio server communicates via standard input/output using JSON-RPC 2.0 protocol:
