@@ -64,8 +64,23 @@ $app->before('start', function () use ($mcpAllowedOrigins, $mcpOriginAllowed, $m
     $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
     if (MCP_ENDPOINT !== $path) {
+        // The informational endpoints (GET /, GET /health) are read-only and
+        // expose nothing sensitive, so they keep the open CORS policy every
+        // route had before the MCP endpoint moved to /mcp. Dropping it broke
+        // cross-origin dashboards polling /health.
+        Flight::response()->header('Access-Control-Allow-Origin', '*');
+        Flight::response()->header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        Flight::response()->header('Access-Control-Allow-Headers', 'Content-Type');
+
+        if ('OPTIONS' === ($_SERVER['REQUEST_METHOD'] ?? '')) {
+            Flight::halt(204);
+        }
+
         return;
     }
+
+    // Only the protocol endpoint gets strict Origin validation: that is the
+    // one the spec requires to be protected against DNS rebinding.
 
     if (false === $mcpOriginAllowed($mcpAllowedOrigins)) {
         $mcpFail(403, -32600, 'Origin not allowed');

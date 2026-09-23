@@ -2,7 +2,6 @@
 
 namespace app\core;
 
-use app\helpers\AbstractMCPTool;
 use app\helpers\ClassAutoLoader;
 use app\helpers\MCPPromptInterface;
 use app\helpers\MCPResourceInterface;
@@ -83,7 +82,10 @@ class MCPService
         $tool = $this->tools->get($name);
         $arguments = $params['arguments'] ?? [];
 
-        if ($tool instanceof AbstractMCPTool) {
+        // Checked by capability rather than by class: a tool may implement
+        // MCPToolInterface directly instead of extending AbstractMCPTool, and
+        // it should not silently lose argument validation for doing so.
+        if (method_exists($tool, 'validateArguments')) {
             $tool->validateArguments($arguments);
         }
 
@@ -159,21 +161,23 @@ class MCPService
         );
     }
 
-    // check if there are any tools registered
+    // The has*() checks feed initialize's capabilities. They only ask whether
+    // anything is registered, so they must not build the listings: that runs
+    // user code (schemas, listResources()) that could throw and fail the
+    // whole handshake over one broken item.
+
     public function hasTools(): bool
     {
-        return !empty($this->tools->list());
+        return false === $this->tools->isEmpty();
     }
 
-    // check if there are any prompts registered
     public function hasPrompts(): bool
     {
-        return !empty($this->prompts->list());
+        return false === $this->prompts->isEmpty();
     }
 
-    // check if there are any resources registered
     public function hasResources(): bool
     {
-        return !empty($this->resources->list());
+        return false === $this->resources->isEmpty();
     }
 }

@@ -26,6 +26,14 @@ class MCPToolRegistry
     }
 
     /**
+     * True when no tool is registered, without building every tool's schema.
+     */
+    public function isEmpty(): bool
+    {
+        return [] === $this->tools;
+    }
+
+    /**
      * @return array<int,array<string,mixed>>
      */
     public function list(): array

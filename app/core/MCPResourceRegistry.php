@@ -35,6 +35,18 @@ class MCPResourceRegistry
     }
 
     /**
+     * True when no resource is registered.
+     *
+     * Deliberately does not call list(): that runs every resource's
+     * listResources(), which is user code free to do I/O or throw. Answering
+     * "is there anything?" must not be able to fail the initialize handshake.
+     */
+    public function isEmpty(): bool
+    {
+        return [] === $this->resources;
+    }
+
+    /**
      * @return array<int,array<string,mixed>>
      */
     public function list(): array

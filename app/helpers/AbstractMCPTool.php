@@ -101,9 +101,10 @@ abstract class AbstractMCPTool implements MCPToolInterface
                 continue;
             }
 
-            $value = $arguments[$parameter['name']] ?? null;
-
-            if (null === $value || '' === $value) {
+            // "Required" means present, not non-empty: an empty string can be a
+            // legitimate value (a blank prefix, say). Only an absent key or an
+            // explicit null counts as missing.
+            if (null === ($arguments[$parameter['name']] ?? null)) {
                 $missing[] = $parameter['name'];
             }
         }

@@ -25,6 +25,14 @@ class MCPPromptRegistry
     }
 
     /**
+     * True when no prompt is registered, without building the listing.
+     */
+    public function isEmpty(): bool
+    {
+        return [] === $this->prompts;
+    }
+
+    /**
      * @return array<int,array<string,mixed>>
      */
     public function list(): array
