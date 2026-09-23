@@ -56,14 +56,11 @@ class MCPSessionStore
      */
     public function touch(string $id): void
     {
-        $session = $this->read($id);
+        $this->mutate($id, static function (array $session): array {
+            $session['lastSeen'] = time();
 
-        if (null === $session) {
-            return;
-        }
-
-        $session['lastSeen'] = time();
-        $this->write($id, $session);
+            return [$session, null];
+        });
     }
 
     public function destroy(string $id): bool
@@ -84,19 +81,22 @@ class MCPSessionStore
     /**
      * Queues a server-to-client message for delivery on the SSE stream.
      *
+     * This is the extension point for server-initiated notifications: call it
+     * from a tool, a job or anywhere else, and the open stream for that
+     * session delivers the message. Nothing in the skeleton calls it yet.
+     *
+     * Returns false when the session no longer exists.
+     *
      * @param array<string,mixed> $message
      */
-    public function push(string $id, array $message): void
+    public function push(string $id, array $message): bool
     {
-        $session = $this->read($id);
+        return true === $this->mutate($id, static function (array $session) use ($message): array {
+            $session['queue'][] = $message;
+            $session['lastSeen'] = time();
 
-        if (null === $session) {
-            return;
-        }
-
-        $session['queue'][] = $message;
-        $session['lastSeen'] = time();
-        $this->write($id, $session);
+            return [$session, true];
+        });
     }
 
     /**
@@ -106,18 +106,20 @@ class MCPSessionStore
      */
     public function drain(string $id): array
     {
-        $session = $this->read($id);
+        $queue = $this->mutate($id, static function (array $session): array {
+            $queue = $session['queue'];
 
-        if (null === $session || [] === $session['queue']) {
-            return [];
-        }
+            if ([] === $queue) {
+                return [null, []];
+            }
 
-        $queue = $session['queue'];
-        $session['queue'] = [];
-        $session['lastSeen'] = time();
-        $this->write($id, $session);
+            $session['queue'] = [];
+            $session['lastSeen'] = time();
 
-        return $queue;
+            return [$session, $queue];
+        });
+
+        return is_array($queue) ? $queue : [];
     }
 
     /**
@@ -158,15 +160,93 @@ class MCPSessionStore
             return null;
         }
 
-        $path = $this->path($id);
+        $handle = @fopen($this->path($id), 'r');
 
-        if (false === is_file($path)) {
+        if (false === $handle) {
             return null;
         }
 
-        $raw = file_get_contents($path);
+        try {
+            // A shared lock: without it a reader could catch a writer between
+            // truncating the file and writing it back, see empty JSON, and
+            // report a live session as missing (a spurious 404).
+            if (false === flock($handle, LOCK_SH)) {
+                return null;
+            }
 
-        if (false === $raw) {
+            return $this->decode(stream_get_contents($handle));
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
+    }
+
+    /**
+     * Applies $change to a session under one exclusive lock.
+     *
+     * touch(), push() and drain() are read-modify-write cycles. Done as a
+     * plain read followed by a write, two of them racing lose an update - a
+     * push() landing between drain()'s read and write would be wiped. Holding
+     * LOCK_EX across the whole cycle serialises them.
+     *
+     * The file is opened with "r+", which never creates it, so a touch() racing
+     * a DELETE cannot bring a destroyed session back to life.
+     *
+     * $change receives the session and returns [newSession, result]; a null
+     * newSession means "nothing to write". Returns the result, or null when
+     * the session does not exist.
+     *
+     * @param callable(array<string,mixed>): array{0: null|array<string,mixed>, 1: mixed} $change
+     *
+     * @return mixed
+     */
+    private function mutate(string $id, callable $change)
+    {
+        if (false === $this->isValidId($id)) {
+            return null;
+        }
+
+        $handle = @fopen($this->path($id), 'r+');
+
+        if (false === $handle) {
+            return null;
+        }
+
+        try {
+            if (false === flock($handle, LOCK_EX)) {
+                return null;
+            }
+
+            $session = $this->decode(stream_get_contents($handle));
+
+            if (null === $session) {
+                return null;
+            }
+
+            [$updated, $result] = $change($session);
+
+            if (null !== $updated) {
+                ftruncate($handle, 0);
+                rewind($handle);
+                fwrite($handle, (string) json_encode($updated, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+                fflush($handle);
+            }
+
+            return $result;
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
+    }
+
+    /**
+     * @param false|string $raw
+     *
+     * @return null|array<string,mixed>
+     */
+    private function decode($raw): ?array
+    {
+        if (false === $raw || '' === $raw) {
             return null;
         }
 

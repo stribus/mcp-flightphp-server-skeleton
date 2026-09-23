@@ -159,12 +159,14 @@ class MCPServerController
             $capabilities['resources'] = ['subscribe' => false, 'listChanged' => false];
         }
 
-        $requested = $params['protocolVersion'] ?? null;
-
         $result = [
-            // If the client asked for a version we implement, echo it back.
-            // Otherwise answer with ours and let the client decide.
-            'protocolVersion' => self::PROTOCOL_VERSION === $requested ? $requested : self::PROTOCOL_VERSION,
+            // This server implements exactly one revision. The spec says to
+            // echo the client's version when supported and otherwise answer
+            // with one we do support - with a single revision both cases
+            // produce the same value, and the client decides whether to go on.
+            // Supporting more revisions would mean reading
+            // $params['protocolVersion'] here and checking it against a list.
+            'protocolVersion' => self::PROTOCOL_VERSION,
             // An empty PHP array encodes as [], but capabilities must be an object.
             'capabilities' => [] === $capabilities ? new \stdClass() : $capabilities,
             // serverInfo is required by the spec and was previously missing.

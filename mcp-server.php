@@ -15,12 +15,6 @@ define('ABSPATH', str_replace('\\', '/', __DIR__) . '/');
 // Include autoloader and dependencies
 require_once ABSPATH . 'vendor/autoload.php';
 
-// Load environment configuration
-if (file_exists(ABSPATH . '.env')) {
-    $dotenv = Dotenv\Dotenv::createImmutable(ABSPATH);
-    $dotenv->load();
-}
-
 // Register app namespace for autoloading
 spl_autoload_register(function ($class) {
     $class = str_replace('\\', '/', $class);
@@ -29,6 +23,10 @@ spl_autoload_register(function ($class) {
         require_once $file;
     }
 });
+
+// Load environment configuration through the same class the HTTP transport
+// uses, so both read .env identically. A missing .env is not an error.
+\app\config\Env::load();
 
 // Set basic configuration for MCP server
 date_default_timezone_set('America/New_York');
