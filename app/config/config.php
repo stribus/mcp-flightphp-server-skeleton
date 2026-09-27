@@ -64,3 +64,16 @@ if (headers_sent() === false && ob_get_level() === 0) {
 
 //Database::loadEnvConfig(); // Load environment variables from .env file
 //Database::configureAll(); // Configure all database connections
+
+/*
+ * Runway 1.x does `$config = require 'app/config/config.php'` and then writes
+ * into $config as an array. A file that returns nothing hands it int(1), and
+ * the generators die with "Cannot use a scalar value as an array" - which only
+ * shows up in a fresh install, since composer.lock is not versioned and older
+ * checkouts stay on runway 0.2.
+ *
+ * This file configures Flight through side effects, so there is no application
+ * config to hand back; an empty array is the honest answer. `bootstrap.php`
+ * uses require_once and ignores the return value.
+ */
+return [];

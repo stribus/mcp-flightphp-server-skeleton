@@ -48,15 +48,17 @@ class HelloWorldTool extends AbstractMCPTool
 
     public function execute(array $arguments): mixed
     {
+        // No manual check for firstName here: AbstractMCPTool::validateArguments()
+        // enforces whatever $arguments declares as required, before execute()
+        // runs, and reports the failure as -32602.
         $firstName = $arguments['firstName'] ?? '';
         $lastName = $arguments['lastName'] ?? '';
 
-        if (empty($firstName)) {
-            throw new \InvalidArgumentException('O parâmetro "firstName" é obrigatório.');
-        }
-
+        // Returning a plain array is enough. The framework wraps it into the
+        // MCP content envelope and, because this tool declares an
+        // outputSchema, also into structuredContent.
         return [
-            'message' => 'Hello ' . $firstName . ' ' . $lastName,
+            'message' => trim('Hello ' . $firstName . ' ' . $lastName),
         ];
     }
 }

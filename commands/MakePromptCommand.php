@@ -30,8 +30,11 @@ class MakePromptCommand extends AbstractBaseCommand
     public function execute(string $prompt)
     {
         $io = $this->app()->io();
-        if (isset($this->config['app_root']) === false) {
+        $appRoot = $this->resolveAppRoot();
+
+        if (null === $appRoot) {
             $io->error('app_root not set in .runway-config.json', true);
+
             return;
         }
 
@@ -39,7 +42,7 @@ class MakePromptCommand extends AbstractBaseCommand
             $prompt .= 'Prompt';
         }
 
-        $promptPath = getcwd() . DIRECTORY_SEPARATOR . $this->config['app_root'] . 'prompts' . DIRECTORY_SEPARATOR . $prompt . '.php';
+        $promptPath = getcwd() . DIRECTORY_SEPARATOR . $appRoot . 'prompts' . DIRECTORY_SEPARATOR . $prompt . '.php';
         if (file_exists($promptPath) === true) {
             $io->error($prompt . ' already exists.', true);
             return;
@@ -64,7 +67,9 @@ class MakePromptCommand extends AbstractBaseCommand
         $class->addProperty('name')
             ->setVisibility('protected')
             ->setType('string')
-            ->setValue(strtolower(preg_replace('/Prompt$/', '', $prompt)))
+            // snake_case, matching GenerateSQLPrompt's own "generate_sql".
+            // strtolower() alone produced names like "mycustom".
+            ->setValue($this->toSnakeCase((string) preg_replace('/Prompt$/', '', $prompt)))
             ->addComment('@var string Name Unique identifier for the prompt');
 
         $class->addProperty('description')
@@ -83,7 +88,11 @@ class MakePromptCommand extends AbstractBaseCommand
             ->setVisibility('protected')
             ->setType('array')
             ->setValue([
-                'input' => [
+                // A list of maps, each carrying its own "name" - the same
+                // convention tools use. The previous template emitted a map
+                // keyed by name while its docblock described this shape.
+                [
+                    'name' => 'input',
                     'type' => 'string',
                     'description' => 'Input text for the prompt',
                     'required' => true,
@@ -94,7 +103,7 @@ class MakePromptCommand extends AbstractBaseCommand
         $getPromptTextMethod = $class->addMethod('getPromptText')
             ->addComment('Returns the prompt text based on the provided context')
             ->setVisibility('public')
-            ->setBody("// Implement the prompt text generation logic here\n// Use the context array to customize the prompt\n\$input = \$context['input'] ?? '';\n\nreturn \"Your prompt text with input: {\$input}\";")
+            ->setBody("// Implement the prompt text generation logic here.\n// \$context holds the arguments sent in prompts/get.\n// Returning a plain string is enough: the framework wraps it into the\n// MCP messages envelope.\n\$input = \$context['input'] ?? '';\n\nreturn \"Your prompt text with input: {\$input}\";")
             ->setReturnType('string');
 
         $getPromptTextMethod->addParameter('context')
@@ -117,7 +126,37 @@ class MakePromptCommand extends AbstractBaseCommand
      */
     protected function persistClass(string $promptName, PhpFile $file)
     {
+        $appRoot = $this->resolveAppRoot();
         $printer = new \Nette\PhpGenerator\PsrPrinter();
-        file_put_contents(getcwd() . DIRECTORY_SEPARATOR . $this->config['app_root'] . 'prompts' . DIRECTORY_SEPARATOR . $promptName . '.php', $printer->printFile($file));
+        file_put_contents(getcwd() . DIRECTORY_SEPARATOR . $appRoot . 'prompts' . DIRECTORY_SEPARATOR . $promptName . '.php', $printer->printFile($file));
+    }
+
+    /**
+     * Resolves app_root across both supported Runway lines.
+     *
+     * Runway 0.2 hands the command the contents of .runway-config.json, so
+     * app_root sits at the top level. Runway 1.x hands it the application
+     * config instead, with .runway-config.json merged under a "runway" key.
+     * Reading only one shape breaks the generators on the other line - and
+     * since composer.lock is not versioned, a fresh install resolves to 1.x.
+     */
+    protected function resolveAppRoot(): ?string
+    {
+        $appRoot = $this->config['runway']['app_root'] ?? $this->config['app_root'] ?? null;
+
+        return is_string($appRoot) ? $appRoot : null;
+    }
+
+    /**
+     * Converts PascalCase to snake_case, keeping acronyms intact.
+     *
+     * "MyCustom" becomes "my_custom" and "GenerateSQL" becomes "generate_sql"
+     * rather than "generate_s_q_l".
+     */
+    protected function toSnakeCase(string $value): string
+    {
+        $separated = preg_replace('/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', '_', $value);
+
+        return strtolower((string) $separated);
     }
 }

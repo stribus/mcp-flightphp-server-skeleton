@@ -15,12 +15,6 @@ define('ABSPATH', str_replace('\\', '/', __DIR__) . '/');
 // Include autoloader and dependencies
 require_once ABSPATH . 'vendor/autoload.php';
 
-// Load environment configuration
-if (file_exists(ABSPATH . '.env')) {
-    $dotenv = Dotenv\Dotenv::createImmutable(ABSPATH);
-    $dotenv->load();
-}
-
 // Register app namespace for autoloading
 spl_autoload_register(function ($class) {
     $class = str_replace('\\', '/', $class);
@@ -29,6 +23,10 @@ spl_autoload_register(function ($class) {
         require_once $file;
     }
 });
+
+// Load environment configuration through the same class the HTTP transport
+// uses, so both read .env identically. A missing .env is not an error.
+\app\config\Env::load();
 
 // Set basic configuration for MCP server
 date_default_timezone_set('America/New_York');
@@ -87,17 +85,24 @@ class MCPStdioServer
                 
                 // Process request
                 $response = $this->controller->handleRequest($request);
+
+                // A null response means the message was a notification.
+                // JSON-RPC forbids answering those, and the spec forbids
+                // writing anything to stdout that is not a valid MCP message.
+                if (null !== $response) {
+                    $this->sendResponse($response);
+                }
                 
-                // Send response
-                $this->sendResponse($response);
-                
-            } catch (Exception $e) {
+            } catch (\Throwable $e) {
                 $this->log("Exception: " . $e->getMessage());
-                $this->sendError(
-                    $request['id'] ?? null, 
-                    -32603, 
-                    'Internal error: ' . $e->getMessage()
-                );
+
+                if (is_array($request) && array_key_exists('id', $request)) {
+                    $this->sendError(
+                        $request['id'],
+                        -32603,
+                        'Internal error: ' . $e->getMessage()
+                    );
+                }
             }
         }
         
@@ -125,19 +130,15 @@ class MCPStdioServer
 
     /**
      * Send JSON-RPC error response
+     *
+     * $id is untyped on purpose: JSON-RPC ids are often strings, and a
+     * TypeError thrown while reporting an error has nowhere left to go.
+     *
+     * @param mixed $id
      */
-    private function sendError(?int $id, int $code, string $message): void
+    private function sendError($id, int $code, string $message): void
     {
-        $response = [
-            'jsonrpc' => '2.0',
-            'id' => $id,
-            'error' => [
-                'code' => $code,
-                'message' => $message
-            ]
-        ];
-        
-        $this->sendResponse($response);
+        $this->sendResponse(MCPServerController::error($id, $code, $message));
     }
 
     /**
