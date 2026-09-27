@@ -79,8 +79,9 @@ Assert-That 'prompts/list drops the non-standard promptText' ($rawPrompts -notma
 $sql = $prompts.result.prompts | Where-Object { $_.name -eq 'generate_sql' }
 Assert-That 'declared prompt arguments are reported' (@($sql.arguments).Count -eq 2) "got $(@($sql.arguments).Count)"
 
-$get = Invoke-Stdio '{"jsonrpc":"2.0","id":8,"method":"prompts/get","params":{"name":"generate_sql","arguments":{"table":"users","columns":["id"]}}}' | ConvertFrom-Json
+$get = Invoke-Stdio '{"jsonrpc":"2.0","id":8,"method":"prompts/get","params":{"name":"generate_sql","arguments":{"table":"users","columns":"id, name"}}}' | ConvertFrom-Json
 Assert-That 'prompts/get returns messages' (@($get.result.messages).Count -ge 1)
+Assert-That 'prompts/get accepts string arguments, as the spec sends them' ($get.result.messages[0].content.text -match 'columns: id, name\.')
 Assert-That 'prompts/get message has a role' ($get.result.messages[0].role -eq 'user')
 Assert-That 'prompts/get message content is typed' ($get.result.messages[0].content.type -eq 'text')
 Assert-That 'prompts/get honours params.arguments' ($get.result.messages[0].content.text -match 'users')

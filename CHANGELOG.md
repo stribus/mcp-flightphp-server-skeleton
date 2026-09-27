@@ -81,6 +81,10 @@ versions from these tags, so `composer.json` carries no `version` field.
 - `tools/list` announced every argument as `"type": "string"` when a tool declared `$arguments`
   as a map keyed by name. The declared types are now preserved under both conventions, in the
   input schema and in the output schema.
+- The `generate_sql` example prompt crashed on `prompts/get` from a real client. The spec sends
+  every prompt argument as a string, and the prompt passed `columns` straight to `implode()`,
+  which only accepts an array. The test suite sent an array, so it never noticed. `columns` is now
+  a comma-separated string, and an array is still accepted.
 - `initialize` could be failed by a single resource whose `listResources()` threw, because
   deciding the capabilities built the full resource listing. Capabilities are now decided from
   the registries without running any user code.
